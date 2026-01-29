@@ -7,54 +7,69 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  USER
+  BRAND
+  ADMIN
+}
+
 model User {
-  id        String        @id @default(uuid())
-  email     String        @unique
-  username String @unique
-  description String  
-  name      String?
-  avatarUrl String?
-  provider  String?
+  id                String  @id @default(uuid())
+  email             String  @unique
+  username          String  @unique
+  description       String
+  name              String?
+  avatarUrl         String?
+  provider          String?
   providerAccountId String?
 
-  createdAt DateTime      @default(now())
+  role Role @default(USER)
 
-  ratings   UserRating[]
+  createdAt DateTime @default(now())
+
+  ratings     UserRating[]
   collections Collection[]
+  products    Product[]    @relation("BrandProducts")
 }
 
 model Product {
-  id                String         @id @default(uuid())
-  name              String
-  price             Int            @default(0)
-  category  String
-  description       String
-  warrantyMonths    Int?
-  freeShippingOn    Boolean        @default(false)
-  returnAvailable   Boolean        @default(false)
+  id              String  @id @default(uuid())
+  name            String
+  price           Int     @default(0)
+  category        String
+  description     String
+  warrantyMonths  Int?
+  freeShippingOn  Boolean @default(false)
+  returnAvailable Boolean @default(false)
 
-  createdAt         DateTime       @default(now())
+  // Brand ownership
+  brandId String
+  brand   User   @relation("BrandProducts", fields: [brandId], references: [id], onDelete: Cascade)
 
-  details           ProductDetail?
-  ratings           UserRating[]
+  createdAt DateTime @default(now())
+
+  details     ProductDetail?
+  ratings     UserRating[]
   collections CollectionProduct[]
+
+  @@index([brandId])
 }
 
 model ProductDetail {
-  id           String   @id @default(uuid())
-  productId    String   @unique
+  id        String @id @default(uuid())
+  productId String @unique
 
-  brand        String?
-  material     String?
-  keyFeatures  String[]   // array of strings
-  moreOptions  Json?      // key-value pairs
-  rating       Float?
+  brand       String?
+  material    String?
+  keyFeatures String[] // array of strings
+  moreOptions Json? // key-value pairs
+  rating      Float?
 
-  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model UserRating {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   userId    String
   productId String
   rating    Int
@@ -62,36 +77,36 @@ model UserRating {
 
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId]) // one rating per user per product
 }
 
 model Collection {
-  id        String   @id @default(uuid())
-  name      String
-  isPublic  Boolean  @default(true)
+  id       String  @id @default(uuid())
+  name     String
+  isPublic Boolean @default(true)
 
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  products  CollectionProduct[]
+  products CollectionProduct[]
 
   @@unique([userId, name]) // user can't create same collection twice
 }
 
 model CollectionProduct {
-  id           String   @id @default(uuid())
+  id           String @id @default(uuid())
   collectionId String
   productId    String
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([collectionId, productId]) // no duplicate bookmarks
 }
