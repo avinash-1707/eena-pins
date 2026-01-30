@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 interface CategoryTabsProps {
   categories?: string[];
@@ -8,10 +8,17 @@ interface CategoryTabsProps {
   onCategoryChange?: (category: string) => void;
 }
 
-const CategoryTabs = ({ 
-  categories = ['Moodboard', 'Living', 'Textiles', 'Ceramic', 'Furniture', 'Decor'],
-  defaultActive = 'Moodboard',
-  onCategoryChange 
+const CategoryTabs = ({
+  categories = [
+    "Moodboard",
+    "Living",
+    "Textiles",
+    "Ceramic",
+    "Furniture",
+    "Decor",
+  ],
+  defaultActive = "Moodboard",
+  onCategoryChange,
 }: CategoryTabsProps) => {
   const [activeCategory, setActiveCategory] = useState(defaultActive);
 
@@ -21,7 +28,7 @@ const CategoryTabs = ({
   };
 
   return (
-    <div className="sticky top-[56px] sm:top-[60px] z-40 border-b border-gray-100">
+    <div className="sticky top-[56px] sm:top-[60px] z-40 border-b border-gray-100 bg-white">
       <div className="overflow-x-auto scrollbar-hide">
         <div className="flex items-center space-x-3 sm:space-x-4 px-4 sm:px-6 py-3">
           {categories.map((category) => (
@@ -37,9 +44,10 @@ const CategoryTabs = ({
                 whitespace-nowrap
                 min-w-fit
                 active:scale-95
-                ${activeCategory === category
-                  ? 'bg-indigo-500 text-white shadow-md'
-                  : 'bg-violet-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                ${
+                  activeCategory === category
+                    ? "bg-indigo-500 text-white shadow-md"
+                    : "bg-violet-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                 }
               `}
             >
@@ -48,7 +56,7 @@ const CategoryTabs = ({
           ))}
         </div>
       </div>
-     </div>
+    </div>
   );
 };
 

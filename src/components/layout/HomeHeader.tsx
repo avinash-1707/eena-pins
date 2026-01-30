@@ -1,13 +1,13 @@
-import React from 'react';
-import Image from 'next/image';
-import { Menu, Search } from 'lucide-react';
+import React from "react";
+import Image from "next/image";
+import { Menu, Search } from "lucide-react";
 
 const Header = () => {
   return (
     <header className="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-200">
-      <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 max-w-screen-xl mx-auto">
+      <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 max-w-7xl mx-auto">
         {/* Left - Hamburger Menu */}
-        <button 
+        <button
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors active:bg-gray-200"
           aria-label="Open menu"
         >
@@ -22,12 +22,12 @@ const Header = () => {
             width={100}
             height={32}
             priority
-            className="object-contain w-20 sm:w-28 h-auto"
+            className="object-contain w-24 sm:w-32 h-auto"
           />
         </div>
 
         {/* Right - Search Icon */}
-        <button 
+        <button
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors active:bg-gray-200"
           aria-label="Search"
         >

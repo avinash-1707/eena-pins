@@ -28,7 +28,7 @@ const ProductCard = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden cursor-pointer">
+    <div className="bg-white rounded-lg shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)] hover:shadow-xl transition-shadow duration-300 overflow-hidden cursor-pointer">
       {/* Image Container with Padding (Polaroid border) */}
       <div className="p-3 pb-0">
         <div className={`relative ${heightClasses[imageHeight]} bg-gray-100 rounded-t-md overflow-hidden`}>
