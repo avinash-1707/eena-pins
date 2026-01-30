@@ -36,6 +36,7 @@ model Product {
   id              String  @id @default(uuid())
   name            String
   price           Int     @default(0)
+  imageUrl        String
   category        String
   description     String
   warrantyMonths  Int?
