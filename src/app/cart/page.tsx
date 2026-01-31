@@ -7,7 +7,7 @@ import EmptyCart from '@/components/cart/EmptyCart';
 import CartItemCard from '@/components/cart/CartItemCard';
 import OrderSummary from '@/components/cart/OrderSummary';
 import CartActions from '@/components/cart/CartActions';
-import CartBanners from '@/components/cart/CartBanners';
+import CartBanner from '@/components/cart/CartBanner';
 import BottomNav from '@/components/layout/BottomNav';
 
 export default function CartPage() {
@@ -45,7 +45,7 @@ export default function CartPage() {
 
   {/* Optional Actions & Banners */}
   {cartItems.length > 0 && <CartActions />}
-  {cartItems.length > 0 && <CartBanners />}
+  {cartItems.length > 0 && <CartBanner />}
 
  
 
