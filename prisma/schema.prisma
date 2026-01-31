@@ -15,11 +15,15 @@ enum Role {
 
 model User {
   id                String  @id @default(uuid())
-  email             String  @unique
+
+  email             String? @unique
+  phone             String? @unique
+
   username          String  @unique
   description       String
   name              String?
   avatarUrl         String?
+
   provider          String?
   providerAccountId String?
 
@@ -30,6 +34,18 @@ model User {
   ratings     UserRating[]
   collections Collection[]
   products    Product[]    @relation("BrandProducts")
+}
+
+
+model PhoneOTP {
+  id          String   @id @default(uuid())
+  phone       String
+  otpHash     String
+  expiresAt   DateTime
+  used        Boolean  @default(false)
+  attempts    Int      @default(0)
+
+  @@index([phone])
 }
 
 model Product {

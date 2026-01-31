@@ -8,6 +8,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-purple-light: #e8e0f0;
+  --color-purple-soft: #d4c5e8;
+  --color-purple-mid: #9b7bb8;
+  --color-purple-deep: #6b4c8a;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
