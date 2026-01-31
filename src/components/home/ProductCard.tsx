@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import {useRouter} from 'next/navigation';
 
 interface ProductCardProps {
   id: string;
@@ -18,6 +19,7 @@ const ProductCard = ({
   imageUrl,
   imageHeight = 'medium'
 }: ProductCardProps) => {
+  const router = useRouter();
   const [imageError, setImageError] = useState(false);
 
   // Variable heights for masonry effect
@@ -27,12 +29,20 @@ const ProductCard = ({
     tall: 'aspect-[3/4]'
   };
 
+  const handleImageClick = () => {
+    router.push(`/product/${id}`);
+  };
+
+
   return (
     <div className="bg-white rounded-lg shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)] hover:shadow-xl transition-shadow duration-300 overflow-hidden cursor-pointer">
       {/* Image Container with Padding (Polaroid border) */}
       <div className="p-3 pb-0">
-        <div className={`relative ${heightClasses[imageHeight]} bg-gray-100 rounded-t-md overflow-hidden`}>
-          {/* Product Image */}
+       <div
+  onClick={handleImageClick}
+  className={`relative ${heightClasses[imageHeight]} bg-gray-100 rounded-t-md overflow-hidden cursor-pointer`}
+>
+
           {!imageError ? (
             <Image
               src={imageUrl}

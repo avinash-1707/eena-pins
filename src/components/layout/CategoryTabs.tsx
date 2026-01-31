@@ -28,7 +28,7 @@ const CategoryTabs = ({
   };
 
   return (
-    <div className="sticky top-[56px] sm:top-[60px] z-40 border-b border-gray-100 bg-white">
+    <div className="sticky top-[56px] sm:top-[60px] z-40 border-b border-gray-100 bg-white ">
       <div className="overflow-x-auto scrollbar-hide">
         <div className="flex items-center space-x-3 sm:space-x-4 px-4 sm:px-6 py-3">
           {categories.map((category) => (
