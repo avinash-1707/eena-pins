@@ -56,12 +56,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
               colors={details.moreOptions?.colors || []}
               sizes={details.moreOptions?.sizes || []}
             />
+             // OLD
+{/* <ProductActions 
+  productId={product.id}
+  price={product.price}
+/> */}
 
-             
-        <ProductActions 
-          productId={product.id}
-          price={product.price}
-        />
+<ProductActions product={product} />
+
+
+           
             <ProductFeatures
           freeShipping={product.freeShippingOn}
           warrantyMonths={product.warrantyMonths}

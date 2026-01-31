@@ -1,24 +1,37 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ShoppingCart, Pin } from 'lucide-react';
+import { ShoppingCart, Pin, Check } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import { Product } from '@/types/Preduct';
+import { useCart } from '@/context/CartContext';
 
 interface ProductActionsProps {
-  productId: string;
-  price: number;
+  product: Product;
+  // price: number;
 }
 
-const ProductActions = ({ productId, price }: ProductActionsProps) => {
+const ProductActions = ({ product }: ProductActionsProps) => {
+  const { addToCart } = useCart();
+
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isAdded, setIsAdded] = useState(false);
 
   const handleAddToCart = () => {
-    console.log('Added to cart:', productId);
+    
+      // addToCart({ id: productId, price } as Product, 1);
+      addToCart(product, 1);
+    setIsAdded(true);
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      setIsAdded(false);
+    }, 2000);
   };
 
   const handleToggleFavorite = () => {
     setIsFavorite(!isFavorite);
-    console.log('Toggle favorite:', productId);
+    // console.log('Toggle favorite:', productId);
   };
 
   return (
@@ -28,9 +41,9 @@ const ProductActions = ({ productId, price }: ProductActionsProps) => {
           variant="primary"
           fullWidth
           onClick={handleAddToCart}
-          icon={<ShoppingCart className="w-5 h-5" />}
+          icon={isAdded ? <Check className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
         >
-          Add to Cart
+          {isAdded ? 'Added to Cart' : 'Add to Cart'}
         </Button>
 
         <button

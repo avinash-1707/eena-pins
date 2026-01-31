@@ -17,7 +17,7 @@ export interface Product {
     brandId: string;
     brand?: User;
 
-    createdAt: Date;
+    createdAt?: Date;
 
     // Relations
     details?: ProductDetail | null;
