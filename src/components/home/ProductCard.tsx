@@ -35,12 +35,12 @@ const ProductCard = ({
 
 
   return (
-    <div className="bg-white rounded-lg shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)] hover:shadow-xl transition-shadow duration-300 overflow-hidden cursor-pointer">
+    <div className="bg-white border border-gray-200 shadow-lg p-2 odd:rotate-[-2.5deg] even:rotate-[2.5deg] hover:rotate-0 transition-transform duration-300 cursor-pointer">
       {/* Image Container with Padding (Polaroid border) */}
       <div className="p-3 pb-0">
        <div
   onClick={handleImageClick}
-  className={`relative ${heightClasses[imageHeight]} bg-gray-100 rounded-t-md overflow-hidden cursor-pointer`}
+  className={`relative ${heightClasses[imageHeight]} bg-gray-100 `}
 >
 
           {!imageError ? (
@@ -60,14 +60,14 @@ const ProductCard = ({
       </div>
 
       {/* Text Container (Bottom white space - Polaroid style) */}
-      <div className="p-4 pt-3">
-        <p className="text-xs font-bold text-orange-500 uppercase tracking-wide mb-1">
-          {category}
+       <div className="p-4 pt-3">
+         <p className="text-xs font-bold text-orange-500 uppercase tracking-wide mb-1">
+          {/* {category} */}
         </p>
         <h3 className="text-sm text-gray-600 font-medium line-clamp-2">
-          {name}
-        </h3>
-      </div>
+          {/* {name} */}
+        </h3> 
+      </div> 
     </div>
   );
 };

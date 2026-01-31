@@ -14,15 +14,14 @@ function Home() {
   }));
 
   return (
-    <div className="min-h-screen dotted-background">
+    <div className="min-h-screen dotted-background ">
       <HomeHeader />
-      <CategoryTabs
-      // onCategoryChange={(category) => console.log('Selected:', category)}
-      />
+      <CategoryTabs />
 
-      <main className="pt-14 pb-20">
+
+       <main className="pt-14 pb-20">
         <ProductGrid products={displayProducts} />
-      </main>
+      </main> 
 
       <BottomNav />
     </div>

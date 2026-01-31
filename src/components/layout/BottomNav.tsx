@@ -20,7 +20,7 @@ const BottomNav = () => {
   };
 
   return (
-    <nav className="fixed bottom-4 left-4 right-4 z-50">
+    <nav className="fixed bottom-4 left-4 right-4 z-50 ">
         <div className="max-w-md mx-auto bg-white/50 backdrop-blur-xl rounded-full border border-white/30 px-6 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
 
 

@@ -16,7 +16,7 @@ const ProductImageSection = ({ imageUrl, category, rating }: ProductImageSection
   return (
     <div className="px-4 pt-4 pb-6">
       {/* Polaroid Card with Image */}
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div className="bg-white border border-gray-200 shadow-lg p-2 rotate-[-1.0deg] hover:rotate-0 transition-transform duration-300 cursor-pointer">
         {/* Image with padding (Polaroid style) */}
         <div className="p-4 pb-0">
           <div className="relative aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden">
@@ -49,7 +49,7 @@ const ProductImageSection = ({ imageUrl, category, rating }: ProductImageSection
         {/* Category Label (in Polaroid bottom section) */}
         <div className="px-4 py-3">
           <p className="text-xs font-bold text-orange-500 uppercase tracking-wide">
-            {category}
+            {/* {category} */}
           </p>
         </div>
       </div>
