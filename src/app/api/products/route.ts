@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { createProductSchema } from "@/schema/createProductSchema";
+import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { authOptions } from "@/app/api/auth/[...nextauth]/option";
 
 export async function GET(req: NextRequest) {
     try {
@@ -78,9 +80,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        // 🔐 Replace with real auth
-        const brandId = req.headers.get("x-user-id");
-        const role = req.headers.get("x-user-role");
+        const session = await getServerSession(authOptions);
+        const headerBrandId = req.headers.get("x-user-id");
+        const headerRole = req.headers.get("x-user-role");
+
+        const brandId = headerBrandId ?? session?.user?.id;
+        const role = headerRole ?? session?.user?.role;
 
         if (!brandId || role !== "BRAND") {
             return NextResponse.json(

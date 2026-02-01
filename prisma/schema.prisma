@@ -14,36 +14,76 @@ enum Role {
 }
 
 model User {
-  id                String  @id @default(uuid())
+  id String @id @default(uuid())
 
+  // Auth / Identity
   email             String? @unique
   phone             String? @unique
-
-  username          String  @unique
-  description       String
-  name              String?
-  avatarUrl         String?
-
   provider          String?
   providerAccountId String?
 
+  // Profile
+  username    String  @unique
+  name        String?
+  description String
+  avatarUrl   String?
+
+  // Role
   role Role @default(USER)
 
   createdAt DateTime @default(now())
 
+  // Customer
+  orders Order[]
+
+  // Brand
+  products     Product[]     @relation("BrandProducts")
+  orderItems   OrderItem[] // items sold by this brand
+  payouts      Payout[] // settlements to this brand
+  brandProfile BrandProfile?
+
+  // Existing
   ratings     UserRating[]
   collections Collection[]
-  products    Product[]    @relation("BrandProducts")
 }
 
+model BrandProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  // Brand identity
+  brandName   String
+  logoUrl     String?
+  description String?
+
+  // Compliance (India)
+  gstNumber    String?
+  panNumber    String?
+  businessType String? // individual / company / partnership
+
+  // Payout setup
+  bankAccountNo       String?
+  ifscCode            String?
+  razorpayContactId   String?
+  razorpayFundAccount String?
+
+  // Controls
+  isApproved    Boolean @default(false)
+  payoutEnabled Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
 model PhoneOTP {
-  id          String   @id @default(uuid())
-  phone       String
-  otpHash     String
-  expiresAt   DateTime
-  used        Boolean  @default(false)
-  attempts    Int      @default(0)
+  id        String   @id @default(uuid())
+  phone     String
+  otpHash   String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  attempts  Int      @default(0)
 
   @@index([phone])
 }
@@ -68,6 +108,7 @@ model Product {
   details     ProductDetail?
   ratings     UserRating[]
   collections CollectionProduct[]
+  orderItems  OrderItem[]
 
   @@index([brandId])
 }
@@ -126,4 +167,111 @@ model CollectionProduct {
   product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([collectionId, productId]) // no duplicate bookmarks
+}
+
+enum OrderStatus {
+  CREATED
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+enum PayoutStatus {
+  PENDING
+  RELEASED
+  FAILED
+}
+
+model Order {
+  id     String      @id @default(uuid())
+  userId String
+  status OrderStatus @default(CREATED)
+
+  totalAmount Int // total paid by customer (₹ in paise)
+  platformFee Int // commission amount
+  currency    String @default("INR")
+
+  razorpayOrderId String? @unique
+  receipt         String? // your internal receipt/order no
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User        @relation(fields: [userId], references: [id])
+  items   OrderItem[]
+  payment Payment?
+  payouts Payout[]
+
+  @@index([userId])
+}
+
+model OrderItem {
+  id String @id @default(uuid())
+
+  orderId   String
+  productId String
+  brandId   String
+
+  quantity    Int @default(1)
+  price       Int // product price * quantity
+  commission  Int // platform commission for this item
+  brandAmount Int // price - commission
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+  brand   User    @relation(fields: [brandId], references: [id])
+
+  @@index([orderId])
+  @@index([brandId])
+}
+
+model Payment {
+  id String @id @default(uuid())
+
+  orderId String        @unique
+  status  PaymentStatus @default(CREATED)
+
+  razorpayPaymentId String? @unique
+  razorpaySignature String?
+
+  method   String? // card / upi / wallet
+  amount   Int
+  currency String  @default("INR")
+
+  paidAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model Payout {
+  id String @id @default(uuid())
+
+  orderId String
+  brandId String
+
+  amount Int // brandAmount
+  status PayoutStatus @default(PENDING)
+
+  razorpayTransferId String?   @unique
+  releasedAt         DateTime?
+
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+  brand User  @relation(fields: [brandId], references: [id])
+
+  @@index([brandId])
 }
