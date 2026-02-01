@@ -14,9 +14,13 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'i.pravatar.cc',
       },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      }
     ],
   },
-  
+
 };
 
 export default nextConfig;

@@ -74,25 +74,21 @@ export const authOptions: NextAuthOptions = {
     ],
 
     callbacks: {
-        async signIn({ user, account }) {
-            if (account?.provider === "google") {
+        async signIn() {
+            return true;
+        },
+
+        async jwt({ token, user, account }) {
+            // First login only
+            if (account && account.provider === "google") {
                 const email = user.email!;
-                const existingUser = await prisma.user.findUnique({
+
+                let dbUser = await prisma.user.findUnique({
                     where: { email },
                 });
 
-                if (existingUser) {
-                    if (!existingUser.providerAccountId) {
-                        await prisma.user.update({
-                            where: { id: existingUser.id },
-                            data: {
-                                provider: "google",
-                                providerAccountId: account.providerAccountId,
-                            },
-                        });
-                    }
-                } else {
-                    await prisma.user.create({
+                if (!dbUser) {
+                    dbUser = await prisma.user.create({
                         data: {
                             email,
                             username: email.split("@")[0],
@@ -104,25 +100,36 @@ export const authOptions: NextAuthOptions = {
                         },
                     });
                 }
-            }
-            return true;
-        },
 
-        async jwt({ token, user }) {
-            if (user) {
-                token.uid = user.id;
+                token.id = dbUser.id;
+                token.username = dbUser.username;
+                token.role = dbUser.role;
+                token.avatarUrl = dbUser.avatarUrl ?? undefined;
+                token.name = dbUser.name ?? undefined;
+            }
+
+            // Phone OTP flow (already correct)
+            if (user && !account) {
+                token.id = user.id;
                 token.username = user.username;
                 token.role = user.role;
+                token.avatarUrl = user.avatarUrl;
+                token.name = user.name;
             }
+
             return token;
-        },
+        }
+        ,
 
         async session({ session, token }) {
-            session.user.id = token.uid as string;
+            session.user.id = token.id as string;
             session.user.username = token.username as string;
             session.user.role = token.role as string;
+            session.user.avatarUrl = token.avatarUrl;
+            session.user.name = token.name;
             return session;
-        },
+        }
+
     },
 
     pages: {
