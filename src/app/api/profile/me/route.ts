@@ -31,6 +31,9 @@ export async function GET() {
                         ratings: true,
                     },
                 },
+                brandRequest: {
+                    select: { status: true },
+                },
             },
         });
 
@@ -41,7 +44,11 @@ export async function GET() {
             );
         }
 
-        return NextResponse.json(user);
+        const { brandRequest, ...rest } = user;
+        return NextResponse.json({
+            ...rest,
+            brandRequestStatus: brandRequest?.status ?? null,
+        });
     } catch (error) {
         console.error("GET /api/profile/me error:", error);
         return NextResponse.json(

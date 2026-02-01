@@ -17,32 +17,52 @@ export async function GET() {
         );
     }
 
-    const brandId = session.user.id;
-
     try {
-        const [productCount, payoutAgg, products] = await prisma.$transaction([
-            prisma.product.count({ where: { brandId } }),
-            prisma.payout.aggregate({
-                where: { brandId },
-                _sum: { amount: true },
-            }),
-            prisma.product.findMany({
-                where: { brandId },
-                orderBy: { createdAt: "desc" },
-                include: {
-                    details: true,
-                    ratings: { select: { rating: true } },
-                },
-            }),
-        ]);
+        // 1️⃣ Fetch brand profile
+        const brandProfile = await prisma.brandProfile.findUnique({
+            where: { userId: session.user.id },
+            select: { id: true, isApproved: true },
+        });
 
-        const totalPayout = payoutAgg._sum.amount ?? 0;
+        if (!brandProfile || !brandProfile.isApproved) {
+            return NextResponse.json(
+                { message: "Brand profile not approved" },
+                { status: 403 }
+            );
+        }
 
-        const enriched = products.map((p) => {
+        const brandProfileId = brandProfile.id;
+
+        // 2️⃣ Run dashboard queries
+        const [productCount, payoutAgg, products] =
+            await prisma.$transaction([
+                prisma.product.count({
+                    where: { brandProfileId },
+                }),
+
+                prisma.payout.aggregate({
+                    where: { brandProfileId, status: "RELEASED" },
+                    _sum: { amount: true },
+                }),
+
+                prisma.product.findMany({
+                    where: { brandProfileId },
+                    orderBy: { createdAt: "desc" },
+                    include: {
+                        details: true,
+                        ratings: { select: { rating: true } },
+                    },
+                }),
+            ]);
+
+        // 3️⃣ Compute ratings
+        const enrichedProducts = products.map((p) => {
+            const ratingCount = p.ratings.length;
             const avgRating =
-                p.ratings.length > 0
-                    ? p.ratings.reduce((a, b) => a + b.rating, 0) / p.ratings.length
+                ratingCount > 0
+                    ? p.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingCount
                     : null;
+
             return {
                 id: p.id,
                 name: p.name,
@@ -52,15 +72,15 @@ export async function GET() {
                 description: p.description,
                 createdAt: p.createdAt,
                 avgRating,
-                ratingCount: p.ratings.length,
+                ratingCount,
                 details: p.details,
             };
         });
 
         return NextResponse.json({
             productCount,
-            totalPayout,
-            products: enriched,
+            totalPayout: payoutAgg._sum.amount ?? 0,
+            products: enrichedProducts,
         });
     } catch (error) {
         console.error("GET /api/brand/dashboard error:", error);

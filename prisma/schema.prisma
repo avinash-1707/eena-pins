@@ -13,10 +13,16 @@ enum Role {
   ADMIN
 }
 
+enum BrandRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id String @id @default(uuid())
 
-  // Auth / Identity
+  // Auth
   email             String? @unique
   phone             String? @unique
   provider          String?
@@ -28,7 +34,6 @@ model User {
   description String
   avatarUrl   String?
 
-  // Role
   role Role @default(USER)
 
   createdAt DateTime @default(now())
@@ -36,13 +41,11 @@ model User {
   // Customer
   orders Order[]
 
-  // Brand
-  products     Product[]     @relation("BrandProducts")
-  orderItems   OrderItem[] // items sold by this brand
-  payouts      Payout[] // settlements to this brand
-  brandProfile BrandProfile?
+  // Brand access
+  brandProfile   BrandProfile?
+  brandRequest   BrandRequest?
 
-  // Existing
+  // Social
   ratings     UserRating[]
   collections Collection[]
 }
@@ -51,28 +54,42 @@ model BrandProfile {
   id     String @id @default(uuid())
   userId String @unique
 
-  // Brand identity
   brandName   String
   logoUrl     String?
   description String?
 
-  // Compliance (India)
+  // Compliance
   gstNumber    String?
   panNumber    String?
-  businessType String? // individual / company / partnership
+  businessType String?
 
-  // Payout setup
+  // Razorpay
   bankAccountNo       String?
   ifscCode            String?
   razorpayContactId   String?
   razorpayFundAccount String?
 
-  // Controls
   isApproved    Boolean @default(false)
   payoutEnabled Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relations
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products   Product[]
+  payouts    Payout[]
+  orderItems OrderItem[]
+}
+
+model BrandRequest {
+  id        String             @id @default(uuid())
+  userId    String             @unique
+  status    BrandRequestStatus  @default(PENDING)
+  message   String?
+  createdAt DateTime           @default(now())
+  reviewedAt DateTime?
+  reviewedById String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -100,8 +117,8 @@ model Product {
   returnAvailable Boolean @default(false)
 
   // Brand ownership
-  brandId String
-  brand   User   @relation("BrandProducts", fields: [brandId], references: [id], onDelete: Cascade)
+  brandProfileId String
+  brandProfile   BrandProfile @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -110,7 +127,7 @@ model Product {
   collections CollectionProduct[]
   orderItems  OrderItem[]
 
-  @@index([brandId])
+  @@index([brandProfileId])
 }
 
 model ProductDetail {
@@ -219,21 +236,21 @@ model Order {
 model OrderItem {
   id String @id @default(uuid())
 
-  orderId   String
-  productId String
-  brandId   String
+  orderId        String
+  productId      String
+  brandProfileId String
 
   quantity    Int @default(1)
   price       Int // product price * quantity
   commission  Int // platform commission for this item
   brandAmount Int // price - commission
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
-  brand   User    @relation(fields: [brandId], references: [id])
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id])
+  brandProfile BrandProfile @relation(fields: [brandProfileId], references: [id])
 
   @@index([orderId])
-  @@index([brandId])
+  @@index([brandProfileId])
 }
 
 model Payment {
@@ -259,8 +276,8 @@ model Payment {
 model Payout {
   id String @id @default(uuid())
 
-  orderId String
-  brandId String
+  orderId        String
+  brandProfileId String
 
   amount Int // brandAmount
   status PayoutStatus @default(PENDING)
@@ -270,8 +287,8 @@ model Payout {
 
   createdAt DateTime @default(now())
 
-  order Order @relation(fields: [orderId], references: [id])
-  brand User  @relation(fields: [brandId], references: [id])
+  order        Order        @relation(fields: [orderId], references: [id])
+  brandProfile BrandProfile @relation(fields: [brandProfileId], references: [id])
 
-  @@index([brandId])
+  @@index([brandProfileId])
 }
