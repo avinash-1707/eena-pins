@@ -24,7 +24,9 @@ export default function NewProductPage() {
   const [detailBrand, setDetailBrand] = useState("");
   const [detailMaterial, setDetailMaterial] = useState("");
   const [keyFeatures, setKeyFeatures] = useState<string[]>([]);
-  const [moreOptions, setMoreOptions] = useState<{ key: string; value: string }[]>([]);
+  const [moreOptions, setMoreOptions] = useState<
+    { key: string; value: string }[]
+  >([]);
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -69,7 +71,7 @@ export default function NewProductPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const price = priceRupees ? Math.round(parseFloat(priceRupees) * 100) : 0;
+    const price = priceRupees ? Math.round(parseFloat(priceRupees)) : 0;
     if (
       !name.trim() ||
       price < 0 ||
@@ -91,8 +93,11 @@ export default function NewProductPage() {
         freeShippingOn,
         returnAvailable,
       };
-      const w = warrantyMonths.trim() ? parseInt(warrantyMonths, 10) : undefined;
-      if (w !== undefined && !Number.isNaN(w) && w > 0) payload.warrantyMonths = w;
+      const w = warrantyMonths.trim()
+        ? parseInt(warrantyMonths, 10)
+        : undefined;
+      if (w !== undefined && !Number.isNaN(w) && w > 0)
+        payload.warrantyMonths = w;
       const hasDetails =
         detailBrand.trim() ||
         detailMaterial.trim() ||
@@ -103,10 +108,13 @@ export default function NewProductPage() {
         if (detailBrand.trim()) details.brand = detailBrand.trim();
         if (detailMaterial.trim()) details.material = detailMaterial.trim();
         if (keyFeatures.some((f) => f.trim()))
-          details.keyFeatures = keyFeatures.map((f) => f.trim()).filter(Boolean);
+          details.keyFeatures = keyFeatures
+            .map((f) => f.trim())
+            .filter(Boolean);
         const opts: Record<string, string> = {};
         moreOptions.forEach((o) => {
-          if (o.key.trim() && o.value.trim()) opts[o.key.trim()] = o.value.trim();
+          if (o.key.trim() && o.value.trim())
+            opts[o.key.trim()] = o.value.trim();
         });
         if (Object.keys(opts).length > 0) details.moreOptions = opts;
         if (Object.keys(details).length > 0) payload.details = details;
@@ -289,13 +297,18 @@ export default function NewProductPage() {
           </div>
 
           <div className="border-t border-gray-100 pt-4">
-            <h3 className="text-sm font-medium text-gray-900">Product details (optional)</h3>
+            <h3 className="text-sm font-medium text-gray-900">
+              Product details (optional)
+            </h3>
             <p className="mt-0.5 text-xs text-gray-500">
               Brand, material, key features and extra options
             </p>
             <div className="mt-3 space-y-3">
               <div>
-                <label htmlFor="detailBrand" className="block text-xs font-medium text-gray-600">
+                <label
+                  htmlFor="detailBrand"
+                  className="block text-xs font-medium text-gray-600"
+                >
                   Brand
                 </label>
                 <input
@@ -308,7 +321,10 @@ export default function NewProductPage() {
                 />
               </div>
               <div>
-                <label htmlFor="detailMaterial" className="block text-xs font-medium text-gray-600">
+                <label
+                  htmlFor="detailMaterial"
+                  className="block text-xs font-medium text-gray-600"
+                >
                   Material
                 </label>
                 <input
@@ -321,8 +337,12 @@ export default function NewProductPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600">Key features</label>
-                <p className="mt-0.5 text-xs text-gray-500">One feature per line</p>
+                <label className="block text-xs font-medium text-gray-600">
+                  Key features
+                </label>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  One feature per line
+                </p>
                 <div className="mt-1 space-y-2">
                   {keyFeatures.map((f, i) => (
                     <div key={i} className="flex gap-2">
@@ -339,7 +359,9 @@ export default function NewProductPage() {
                       />
                       <button
                         type="button"
-                        onClick={() => setKeyFeatures(keyFeatures.filter((_, j) => j !== i))}
+                        onClick={() =>
+                          setKeyFeatures(keyFeatures.filter((_, j) => j !== i))
+                        }
                         className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
                       >
                         Remove
@@ -356,8 +378,12 @@ export default function NewProductPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600">More options (key-value)</label>
-                <p className="mt-0.5 text-xs text-gray-500">e.g. Color: Red, Size: M</p>
+                <label className="block text-xs font-medium text-gray-600">
+                  More options (key-value)
+                </label>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  e.g. Color: Red, Size: M
+                </p>
                 <div className="mt-1 space-y-2">
                   {moreOptions.map((o, i) => (
                     <div key={i} className="flex gap-2">
@@ -385,7 +411,9 @@ export default function NewProductPage() {
                       />
                       <button
                         type="button"
-                        onClick={() => setMoreOptions(moreOptions.filter((_, j) => j !== i))}
+                        onClick={() =>
+                          setMoreOptions(moreOptions.filter((_, j) => j !== i))
+                        }
                         className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
                       >
                         Remove
@@ -394,7 +422,9 @@ export default function NewProductPage() {
                   ))}
                   <button
                     type="button"
-                    onClick={() => setMoreOptions([...moreOptions, { key: "", value: "" }])}
+                    onClick={() =>
+                      setMoreOptions([...moreOptions, { key: "", value: "" }])
+                    }
                     className="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
                   >
                     + Add option

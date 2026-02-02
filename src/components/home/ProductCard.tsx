@@ -9,24 +9,26 @@ interface ProductCardProps {
   name: string;
   category: string;
   imageUrl: string;
-  imageHeight?: "short" | "medium" | "tall";
 }
 
-const ProductCard = ({
-  id,
-  name,
-  category,
-  imageUrl,
-  imageHeight = "medium",
-}: ProductCardProps) => {
+const ProductCard = ({ id, name, imageUrl }: ProductCardProps) => {
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
+  const [aspect, setAspect] = useState<"short" | "medium" | "tall">("medium");
 
-  // Variable heights for masonry effect
+  // Variable heights for masonry effect (derived from image dimensions on load)
   const heightClasses = {
-    short: "aspect-[3/4]",
+    short: "aspect-[4/3]",
     medium: "aspect-square",
     tall: "aspect-[3/4]",
+  };
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const ratio = w / h;
+    setAspect(ratio > 1.1 ? "short" : ratio < 0.9 ? "tall" : "medium");
   };
 
   const handleImageClick = () => {
@@ -39,7 +41,7 @@ const ProductCard = ({
       <div className="p-1 pb-0">
         <div
           onClick={handleImageClick}
-          className={`relative ${heightClasses[imageHeight]} bg-gray-100 `}
+          className={`relative ${heightClasses[aspect]} bg-gray-100 `}
         >
           {!imageError ? (
             <Image
@@ -47,6 +49,7 @@ const ProductCard = ({
               alt={name}
               fill
               className="object-cover"
+              onLoad={handleImageLoad}
               onError={() => setImageError(true)}
             />
           ) : (
