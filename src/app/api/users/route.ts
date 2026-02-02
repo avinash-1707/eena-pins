@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
         const skip = (page - 1) * limit;
 
-        const [users, total] = await prisma.$transaction([
+        const [users, total] = await Promise.all([
             prisma.user.findMany({
                 skip,
                 take: limit,

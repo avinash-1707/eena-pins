@@ -11,13 +11,13 @@ export async function GET(req: NextRequest) {
         const page = Number(searchParams.get("page") ?? 1);
         const limit = Number(searchParams.get("limit") ?? 10);
         const category = searchParams.get("category");
-        const brandId = searchParams.get("brandId");
+        const brandProfileId = searchParams.get("brandProfileId");
 
         const skip = (page - 1) * limit;
 
         const where = {
             ...(category && { category }),
-            ...(brandId && { brandId }),
+            ...(brandProfileId && { brandProfileId }),
         };
 
         const [products, total] = await prisma.$transaction([
@@ -31,11 +31,18 @@ export async function GET(req: NextRequest) {
                     ratings: {
                         select: { rating: true },
                     },
-                    brand: {
+                    brandProfile: {
                         select: {
                             id: true,
-                            username: true,
-                            avatarUrl: true,
+                            brandName: true,
+                            logoUrl: true,
+                            isApproved: true,
+                            user: {
+                                select: {
+                                    username: true,
+                                    avatarUrl: true,
+                                },
+                            },
                         },
                     },
                 },
@@ -44,15 +51,16 @@ export async function GET(req: NextRequest) {
         ]);
 
         const enriched = products.map((p) => {
+            const ratingCount = p.ratings.length;
             const avgRating =
-                p.ratings.length > 0
-                    ? p.ratings.reduce((a, b) => a + b.rating, 0) / p.ratings.length
+                ratingCount > 0
+                    ? p.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingCount
                     : null;
 
             return {
                 ...p,
                 avgRating,
-                ratingCount: p.ratings.length,
+                ratingCount,
                 ratings: undefined,
             };
         });
@@ -76,6 +84,7 @@ export async function GET(req: NextRequest) {
 }
 
 
+
 // POST /api/products
 
 export async function POST(req: NextRequest) {
@@ -93,6 +102,20 @@ export async function POST(req: NextRequest) {
                 { status: 403 }
             );
         }
+
+        const brandProfile = await prisma.brandProfile.findUnique({
+            where: { userId: brandId },
+            select: { id: true, isApproved: true },
+        });
+
+        if (!brandProfile || !brandProfile.isApproved) {
+            return NextResponse.json(
+                { message: "Brand profile not approved" },
+                { status: 403 }
+            );
+        }
+
+        const brandProfileId = brandProfile.id;
 
         const body = await req.json();
         const parsed = createProductSchema.safeParse(body);
@@ -117,7 +140,7 @@ export async function POST(req: NextRequest) {
                     ...productData,
                     freeShippingOn,
                     returnAvailable,
-                    brandId,
+                    brandProfileId,
                 },
             });
 

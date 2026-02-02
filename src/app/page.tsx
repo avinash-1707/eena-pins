@@ -18,10 +18,9 @@ function Home() {
       <HomeHeader />
       <CategoryTabs />
 
-
-       <main className="pt-14 pb-20">
+      <main className="pt-14 pb-20">
         <ProductGrid products={displayProducts} />
-      </main> 
+      </main>
 
       <BottomNav />
     </div>

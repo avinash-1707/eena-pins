@@ -44,13 +44,13 @@ export async function POST(
         const adminId = token.sub ?? token.id;
 
         await prisma.$transaction([
-            // 1️⃣ Promote user to BRAND
+            // Promote user to BRAND
             prisma.user.update({
                 where: { id: brandRequest.userId },
                 data: { role: "BRAND" },
             }),
 
-            // 2️⃣ Ensure brand profile exists & is approved
+            // Ensure brand profile exists & is approved
             prisma.brandProfile.upsert({
                 where: { userId: brandRequest.userId },
                 update: {
@@ -66,7 +66,7 @@ export async function POST(
                 },
             }),
 
-            // 3️⃣ Mark request as approved
+            // Mark request as approved
             prisma.brandRequest.update({
                 where: { id },
                 data: {

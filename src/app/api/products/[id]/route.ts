@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { updateProductSchema } from "@/schema/updateProductSchema";
+import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -11,13 +12,6 @@ export async function GET(
             where: { id: params.id },
             include: {
                 details: true,
-                brand: {
-                    select: {
-                        id: true,
-                        username: true,
-                        avatarUrl: true,
-                    },
-                },
                 ratings: {
                     select: {
                         rating: true,
@@ -32,6 +26,12 @@ export async function GET(
                         },
                     },
                 },
+                brandProfile: {
+                    select: {
+                        id: true,
+                        brandName: true,
+                    },
+                },
             },
         });
 
@@ -44,8 +44,10 @@ export async function GET(
 
         const avgRating =
             product.ratings.length > 0
-                ? product.ratings.reduce((a, b) => a + b.rating, 0) /
-                product.ratings.length
+                ? product.ratings.reduce(
+                      (sum, rating) => sum + rating.rating,
+                      0
+                  ) / product.ratings.length
                 : null;
 
         return NextResponse.json({
@@ -94,17 +96,23 @@ export async function PATCH(
 
         const product = await prisma.product.findUnique({
             where: { id: params.id },
-            select: { brandId: true },
+            select: {
+                brandProfile: {
+                    select: {
+                        userId: true,
+                    },
+                },
+            },
         });
 
-        if (!product) {
+        if (!product || !product.brandProfile) {
             return NextResponse.json(
                 { message: "Product not found" },
                 { status: 404 }
             );
         }
 
-        if (product.brandId !== userId) {
+        if (product.brandProfile.userId !== userId) {
             return NextResponse.json(
                 { message: "You do not own this product" },
                 { status: 403 }
@@ -152,6 +160,33 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
+        // First, allow admins via NextAuth token
+        const token = await getToken({
+            req,
+            secret: process.env.NEXTAUTH_SECRET,
+        });
+
+        if (token && token.role === "ADMIN") {
+            const existing = await prisma.product.findUnique({
+                where: { id: params.id },
+                select: { id: true },
+            });
+
+            if (!existing) {
+                return NextResponse.json(
+                    { message: "Product not found" },
+                    { status: 404 }
+                );
+            }
+
+            await prisma.product.delete({
+                where: { id: params.id },
+            });
+
+            return NextResponse.json({ message: "Product deleted" });
+        }
+
+        // Fallback to existing brand-based auth
         const userId = req.headers.get("x-user-id");
         const role = req.headers.get("x-user-role");
 
@@ -164,17 +199,23 @@ export async function DELETE(
 
         const product = await prisma.product.findUnique({
             where: { id: params.id },
-            select: { brandId: true },
+            select: {
+                brandProfile: {
+                    select: {
+                        userId: true,
+                    },
+                },
+            },
         });
 
-        if (!product) {
+        if (!product || !product.brandProfile) {
             return NextResponse.json(
                 { message: "Product not found" },
                 { status: 404 }
             );
         }
 
-        if (product.brandId !== userId) {
+        if (product.brandProfile.userId !== userId) {
             return NextResponse.json(
                 { message: "You do not own this product" },
                 { status: 403 }

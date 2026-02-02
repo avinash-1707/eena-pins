@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
     try {
-        const [userCount, brandCount] = await prisma.$transaction([
+        const [userCount, brandCount] = await Promise.all([
             prisma.user.count(),
             prisma.user.count({ where: { role: "BRAND" } }),
         ]);
