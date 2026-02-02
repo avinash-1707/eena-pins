@@ -1,15 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { updateProductSchema } from "@/schema/updateProductSchema";
 import { getToken } from "next-auth/jwt";
+import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { authOptions } from "@/app/api/auth/[...nextauth]/option";
 
 export async function GET(
     _req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params
         const product = await prisma.product.findUnique({
-            where: { id: params.id },
+            where: { id: id },
             include: {
                 details: true,
                 ratings: {
@@ -45,9 +48,9 @@ export async function GET(
         const avgRating =
             product.ratings.length > 0
                 ? product.ratings.reduce(
-                      (sum, rating) => sum + rating.rating,
-                      0
-                  ) / product.ratings.length
+                    (sum, rating) => sum + rating.rating,
+                    0
+                ) / product.ratings.length
                 : null;
 
         return NextResponse.json({
@@ -68,14 +71,23 @@ export async function GET(
 /* PATCH /api/products/[id]      */
 /* ----------------------------- */
 
+async function resolveBrandAuth(req: NextRequest) {
+    const session = await getServerSession(authOptions);
+    if (session?.user?.id && session?.user?.role === "BRAND") {
+        return { userId: session.user.id, role: session.user.role };
+    }
+    const userId = req.headers.get("x-user-id");
+    const role = req.headers.get("x-user-role");
+    return { userId: userId ?? null, role: role ?? null };
+}
+
 export async function PATCH(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        // 🔐 Replace with real auth/session
-        const userId = req.headers.get("x-user-id");
-        const role = req.headers.get("x-user-role");
+        const { id } = await params
+        const { userId, role } = await resolveBrandAuth(req);
 
         if (!userId || role !== "BRAND") {
             return NextResponse.json(
@@ -95,7 +107,7 @@ export async function PATCH(
         }
 
         const product = await prisma.product.findUnique({
-            where: { id: params.id },
+            where: { id: id },
             select: {
                 brandProfile: {
                     select: {
@@ -124,16 +136,16 @@ export async function PATCH(
         await prisma.$transaction(async (tx) => {
             if (Object.keys(productData).length > 0) {
                 await tx.product.update({
-                    where: { id: params.id },
+                    where: { id: id },
                     data: productData,
                 });
             }
 
             if (details) {
                 await tx.productDetail.upsert({
-                    where: { productId: params.id },
+                    where: { productId: id },
                     create: {
-                        productId: params.id,
+                        productId: id,
                         ...details,
                     },
                     update: details,
@@ -157,9 +169,10 @@ export async function PATCH(
 
 export async function DELETE(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         // First, allow admins via NextAuth token
         const token = await getToken({
             req,
@@ -168,7 +181,7 @@ export async function DELETE(
 
         if (token && token.role === "ADMIN") {
             const existing = await prisma.product.findUnique({
-                where: { id: params.id },
+                where: { id: id },
                 select: { id: true },
             });
 
@@ -180,15 +193,13 @@ export async function DELETE(
             }
 
             await prisma.product.delete({
-                where: { id: params.id },
+                where: { id: id },
             });
 
             return NextResponse.json({ message: "Product deleted" });
         }
 
-        // Fallback to existing brand-based auth
-        const userId = req.headers.get("x-user-id");
-        const role = req.headers.get("x-user-role");
+        const { userId, role } = await resolveBrandAuth(req);
 
         if (!userId || role !== "BRAND") {
             return NextResponse.json(
@@ -198,7 +209,7 @@ export async function DELETE(
         }
 
         const product = await prisma.product.findUnique({
-            where: { id: params.id },
+            where: { id: id },
             select: {
                 brandProfile: {
                     select: {
@@ -223,7 +234,7 @@ export async function DELETE(
         }
 
         await prisma.product.delete({
-            where: { id: params.id },
+            where: { id: id },
         });
 
         return NextResponse.json({ message: "Product deleted" });

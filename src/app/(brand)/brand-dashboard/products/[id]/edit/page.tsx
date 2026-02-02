@@ -1,13 +1,38 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 
-export default function NewProductPage() {
+interface ProductDetails {
+  brand?: string | null;
+  material?: string | null;
+  keyFeatures?: string[];
+  moreOptions?: Record<string, string> | null;
+}
+
+interface FetchedProduct {
+  id: string;
+  name: string;
+  price: number;
+  imageUrl: string;
+  category: string;
+  description: string;
+  warrantyMonths?: number | null;
+  freeShippingOn: boolean;
+  returnAvailable: boolean;
+  details?: ProductDetails | null;
+}
+
+export default function EditProductPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = typeof params.id === "string" ? params.id : "";
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +50,51 @@ export default function NewProductPage() {
   const [detailMaterial, setDetailMaterial] = useState("");
   const [keyFeatures, setKeyFeatures] = useState<string[]>([]);
   const [moreOptions, setMoreOptions] = useState<{ key: string; value: string }[]>([]);
+  const [initialImageUrl, setInitialImageUrl] = useState("");
+
+  useEffect(() => {
+    if (!id) {
+      setFetchError("Invalid product");
+      setFetchLoading(false);
+      return;
+    }
+    async function load() {
+      try {
+        const res = await fetch(`/api/products/${id}`);
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setFetchError(json.message ?? "Product not found");
+          return;
+        }
+        const p = json as FetchedProduct;
+        setName(p.name ?? "");
+        setPriceRupees(p.price != null ? (p.price / 100).toFixed(2) : "");
+        const img = p.imageUrl ?? "";
+        setImageUrl(img);
+        setInitialImageUrl(img);
+        setCategory(p.category ?? "");
+        setDescription(p.description ?? "");
+        setWarrantyMonths(
+          p.warrantyMonths != null && p.warrantyMonths > 0 ? String(p.warrantyMonths) : ""
+        );
+        setFreeShippingOn(p.freeShippingOn ?? false);
+        setReturnAvailable(p.returnAvailable ?? false);
+        const d = p.details;
+        setDetailBrand(d?.brand ?? "");
+        setDetailMaterial(d?.material ?? "");
+        setKeyFeatures(Array.isArray(d?.keyFeatures) ? [...d.keyFeatures] : []);
+        const opts = d?.moreOptions && typeof d.moreOptions === "object" ? d.moreOptions : {};
+        setMoreOptions(
+          Object.entries(opts).map(([k, v]) => ({ key: k, value: String(v) }))
+        );
+      } catch {
+        setFetchError("Failed to load product");
+      } finally {
+        setFetchLoading(false);
+      }
+    }
+    load();
+  }, [id]);
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -61,8 +131,8 @@ export default function NewProductPage() {
   }
 
   function clearImage() {
-    setImageUrl("");
     setImagePreview(null);
+    setImageUrl(initialImageUrl);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -77,7 +147,7 @@ export default function NewProductPage() {
       !description.trim() ||
       !imageUrl.trim()
     ) {
-      setError("Please fill all fields and upload a product image.");
+      setError("Please fill all required fields and ensure a product image is set.");
       return;
     }
     setLoading(true);
@@ -111,14 +181,14 @@ export default function NewProductPage() {
         if (Object.keys(opts).length > 0) details.moreOptions = opts;
         if (Object.keys(details).length > 0) payload.details = details;
       }
-      const res = await fetch("/api/products", {
-        method: "POST",
+      const res = await fetch(`/api/products/${id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json.message ?? "Failed to create product");
+        throw new Error(json.message ?? "Failed to update product");
       }
       router.push("/brand-dashboard");
       router.refresh();
@@ -127,6 +197,45 @@ export default function NewProductPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (fetchLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <main className="mx-auto max-w-xl px-3 py-4 sm:px-4 sm:py-6">
+          <div className="animate-pulse space-y-4 rounded-xl border border-gray-100 bg-white p-6">
+            <div className="h-8 w-48 rounded bg-gray-200" />
+            <div className="h-10 rounded bg-gray-200" />
+            <div className="h-10 rounded bg-gray-200" />
+            <div className="h-24 rounded bg-gray-200" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <main className="mx-auto max-w-xl px-3 py-4 sm:px-4 sm:py-6">
+          <Link
+            href="/brand-dashboard"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900"
+          >
+            ← Back to dashboard
+          </Link>
+          <div className="mt-6 rounded-xl border border-red-100 bg-white p-6 text-center">
+            <p className="text-red-600 font-medium">{fetchError}</p>
+            <Link
+              href="/brand-dashboard"
+              className="mt-4 inline-block rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              Back to dashboard
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -142,7 +251,7 @@ export default function NewProductPage() {
         </div>
 
         <h1 className="mb-6 text-xl font-semibold text-gray-900 sm:text-2xl">
-          Create product
+          Edit product
         </h1>
 
         <form
@@ -156,10 +265,7 @@ export default function NewProductPage() {
           )}
 
           <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
               Name
             </label>
             <input
@@ -173,10 +279,7 @@ export default function NewProductPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="price"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="price" className="block text-sm font-medium text-gray-700">
               Price (₹)
             </label>
             <input
@@ -206,23 +309,30 @@ export default function NewProductPage() {
               disabled={uploading}
               className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200 disabled:opacity-60"
             />
-            {uploading && (
-              <p className="mt-2 text-sm text-gray-500">Uploading…</p>
-            )}
-            {imagePreview && (
+            {uploading && <p className="mt-2 text-sm text-gray-500">Uploading…</p>}
+            {(imagePreview || imageUrl) && (
               <div className="mt-3 flex items-start gap-3">
                 <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <Image
-                    src={imagePreview}
-                    alt="Preview"
-                    width={150}
-                    height={75}
-                    className="h-full w-full object-cover"
-                  />
+                  {imagePreview ? (
+                    <Image
+                      src={imagePreview}
+                      alt="Preview"
+                      width={96}
+                      height={96}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={imageUrl}
+                      alt="Current"
+                      className="h-full w-full object-cover"
+                    />
+                  )}
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-green-600">Image uploaded</span>
+                  <span className="text-xs text-green-600">
+                    {imagePreview ? "New image uploaded" : "Current image"}
+                  </span>
                   <button
                     type="button"
                     onClick={clearImage}
@@ -236,10 +346,7 @@ export default function NewProductPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="category"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700">
               Category
             </label>
             <input
@@ -253,10 +360,7 @@ export default function NewProductPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="description"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700">
               Description
             </label>
             <textarea
@@ -270,10 +374,7 @@ export default function NewProductPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="warrantyMonths"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="warrantyMonths" className="block text-sm font-medium text-gray-700">
               Warranty (months)
             </label>
             <input
@@ -356,7 +457,9 @@ export default function NewProductPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600">More options (key-value)</label>
+                <label className="block text-xs font-medium text-gray-600">
+                  More options (key-value)
+                </label>
                 <p className="mt-0.5 text-xs text-gray-500">e.g. Color: Red, Size: M</p>
                 <div className="mt-1 space-y-2">
                   {moreOptions.map((o, i) => (
@@ -437,7 +540,7 @@ export default function NewProductPage() {
               disabled={loading || uploading}
               className="inline-flex justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-60"
             >
-              {loading ? "Creating…" : "Create product"}
+              {loading ? "Saving…" : "Save changes"}
             </button>
           </div>
         </form>

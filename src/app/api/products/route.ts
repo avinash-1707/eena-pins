@@ -8,49 +8,53 @@ export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
 
-        const page = Number(searchParams.get("page") ?? 1);
-        const limit = Number(searchParams.get("limit") ?? 10);
+        const cursor = searchParams.get("cursor") ?? undefined;
+        const limit = Math.min(
+            Math.max(Number(searchParams.get("limit") ?? 12), 1),
+            50
+        );
         const category = searchParams.get("category");
         const brandProfileId = searchParams.get("brandProfileId");
-
-        const skip = (page - 1) * limit;
 
         const where = {
             ...(category && { category }),
             ...(brandProfileId && { brandProfileId }),
         };
 
-        const [products, total] = await prisma.$transaction([
-            prisma.product.findMany({
-                where,
-                skip,
-                take: limit,
-                orderBy: { createdAt: "desc" },
-                include: {
-                    details: true,
-                    ratings: {
-                        select: { rating: true },
-                    },
-                    brandProfile: {
-                        select: {
-                            id: true,
-                            brandName: true,
-                            logoUrl: true,
-                            isApproved: true,
-                            user: {
-                                select: {
-                                    username: true,
-                                    avatarUrl: true,
-                                },
+        const orderBy = [{ createdAt: "desc" as const }, { id: "desc" as const }];
+
+        const products = await prisma.product.findMany({
+            where,
+            take: limit + 1,
+            ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+            orderBy,
+            include: {
+                details: true,
+                ratings: {
+                    select: { rating: true },
+                },
+                brandProfile: {
+                    select: {
+                        id: true,
+                        brandName: true,
+                        logoUrl: true,
+                        isApproved: true,
+                        user: {
+                            select: {
+                                username: true,
+                                avatarUrl: true,
                             },
                         },
                     },
                 },
-            }),
-            prisma.product.count({ where }),
-        ]);
+            },
+        });
 
-        const enriched = products.map((p) => {
+        const hasMore = products.length > limit;
+        const data = products.slice(0, limit);
+        const nextCursor = hasMore ? data[data.length - 1]?.id : null;
+
+        const enriched = data.map((p) => {
             const ratingCount = p.ratings.length;
             const avgRating =
                 ratingCount > 0
@@ -67,12 +71,8 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({
             data: enriched,
-            meta: {
-                total,
-                page,
-                limit,
-                pages: Math.ceil(total / limit),
-            },
+            nextCursor,
+            hasMore,
         });
     } catch (error) {
         console.error("GET /products error:", error);

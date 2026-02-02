@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+
+const PRODUCTS_PAGE_SIZE = 20;
 
 interface Stats {
   users: number;
@@ -22,10 +24,9 @@ interface Product {
   category: string;
   price: number;
   createdAt: string;
-  brand?: {
+  brandProfile?: {
     id: string;
-    username: string;
-    avatarUrl: string | null;
+    user?: { username: string; avatarUrl: string | null };
   } | null;
 }
 
@@ -64,7 +65,13 @@ export default function Dashboard() {
   const [actioningProductId, setActioningProductId] = useState<string | null>(
     null,
   );
-  const [productsFetched, setProductsFetched] = useState(false); // NEW: Track if products have been fetched
+  const [productsFetched, setProductsFetched] = useState(false);
+  const [productsNextCursor, setProductsNextCursor] = useState<string | null>(
+    null,
+  );
+  const [productsHasMore, setProductsHasMore] = useState(true);
+  const [productsLoadingMore, setProductsLoadingMore] = useState(false);
+  const productsSentinelRef = useRef<HTMLDivElement>(null);
 
   async function fetchData() {
     setLoading(true);
@@ -118,25 +125,43 @@ export default function Dashboard() {
     }
   }
 
+  const loadProductsPage = useCallback(
+    async (cursor: string | null, append: boolean) => {
+      const params = new URLSearchParams();
+      params.set("limit", String(PRODUCTS_PAGE_SIZE));
+      if (cursor) params.set("cursor", cursor);
+      const res = await fetch(`/api/products?${params.toString()}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setProductsError(data.message ?? "Failed to load products");
+        if (!append) setProducts([]);
+        setProductsFetched(true);
+        return;
+      }
+      const list = data.data ?? [];
+      const next = data.nextCursor ?? null;
+      const hasMore = data.hasMore ?? false;
+      if (append) {
+        setProducts((prev) => [...prev, ...list]);
+      } else {
+        setProducts(list);
+      }
+      setProductsNextCursor(next);
+      setProductsHasMore(hasMore);
+      setProductsFetched(true);
+    },
+    []
+  );
+
   async function fetchProducts() {
     setProductsLoading(true);
     setProductsError(null);
     try {
-      const res = await fetch("/api/products?limit=50");
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setProductsError(data.message ?? "Failed to load products");
-        setProducts([]);
-        setProductsFetched(true); // FIXED: Mark as fetched even on error
-        return;
-      }
-      const data = await res.json();
-      setProducts(data.data ?? []);
-      setProductsFetched(true); // FIXED: Mark as fetched after successful fetch
+      await loadProductsPage(null, false);
     } catch {
       setProductsError("Failed to load products");
       setProducts([]);
-      setProductsFetched(true); // FIXED: Mark as fetched even on error
+      setProductsFetched(true);
     } finally {
       setProductsLoading(false);
     }
@@ -153,11 +178,41 @@ export default function Dashboard() {
   }, [tab]);
 
   useEffect(() => {
-    // FIXED: Only fetch if tab is products AND products haven't been fetched yet
     if (tab === "products" && !productsFetched && !productsLoading) {
       fetchProducts();
     }
   }, [tab, productsFetched, productsLoading]);
+
+  useEffect(() => {
+    if (
+      tab !== "products" ||
+      !productsHasMore ||
+      productsLoadingMore ||
+      !productsNextCursor
+    ) {
+      return;
+    }
+    const el = productsSentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        setProductsLoadingMore(true);
+        loadProductsPage(productsNextCursor, true).finally(() =>
+          setProductsLoadingMore(false)
+        );
+      },
+      { rootMargin: "200px", threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [
+    tab,
+    productsHasMore,
+    productsLoadingMore,
+    productsNextCursor,
+    loadProductsPage,
+  ]);
 
   async function handleDeleteUser(id: string) {
     const confirmed = window.confirm(
@@ -523,47 +578,59 @@ export default function Dashboard() {
                 <p className="text-gray-500">No products yet</p>
               </div>
             ) : (
-              <section className="space-y-2">
-                {products.map((product) => (
-                  <article
-                    key={product.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-gray-900">
-                        {product.name}
-                      </p>
-                      <p className="truncate text-sm text-gray-500">
-                        {product.category}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        ₹{(product.price / 100).toFixed(2)}{" "}
-                        {product.brand?.username
-                          ? `· @${product.brand.username}`
-                          : ""}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-400">
-                        {new Date(product.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteProduct(product.id)}
-                        disabled={actioningProductId === product.id}
-                        className="inline-flex items-center justify-center rounded-full border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        {actioningProductId === product.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <XCircle className="h-4 w-4" />
-                        )}
-                        <span className="ml-1 hidden sm:inline">Delete</span>
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </section>
+              <>
+                <section className="space-y-2">
+                  {products.map((product) => (
+                    <article
+                      key={product.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-gray-900">
+                          {product.name}
+                        </p>
+                        <p className="truncate text-sm text-gray-500">
+                          {product.category}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          ₹{(product.price / 100).toFixed(2)}{" "}
+                          {product.brandProfile?.user?.username
+                            ? `· @${product.brandProfile.user.username}`
+                            : ""}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {new Date(product.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteProduct(product.id)}
+                          disabled={actioningProductId === product.id}
+                          className="inline-flex items-center justify-center rounded-full border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {actioningProductId === product.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <XCircle className="h-4 w-4" />
+                          )}
+                          <span className="ml-1 hidden sm:inline">Delete</span>
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </section>
+                <div
+                  ref={productsSentinelRef}
+                  className="h-4"
+                  aria-hidden
+                />
+                {productsLoadingMore && (
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

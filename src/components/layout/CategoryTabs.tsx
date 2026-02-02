@@ -5,6 +5,7 @@ import React, { useState } from "react";
 interface CategoryTabsProps {
   categories?: string[];
   defaultActive?: string;
+  activeCategory?: string;
   onCategoryChange?: (category: string) => void;
 }
 
@@ -18,12 +19,15 @@ const CategoryTabs = ({
     "Decor",
   ],
   defaultActive = "Moodboard",
+  activeCategory: controlledActive,
   onCategoryChange,
 }: CategoryTabsProps) => {
-  const [activeCategory, setActiveCategory] = useState(defaultActive);
+  const [internalActive, setInternalActive] = useState(defaultActive);
+  const isControlled = controlledActive !== undefined;
+  const activeCategory = isControlled ? controlledActive : internalActive;
 
   const handleCategoryClick = (category: string) => {
-    setActiveCategory(category);
+    if (!isControlled) setInternalActive(category);
     onCategoryChange?.(category);
   };
 
