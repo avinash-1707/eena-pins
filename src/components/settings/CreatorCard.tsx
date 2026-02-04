@@ -2,11 +2,13 @@
 
 import React from 'react';
 import { Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const CreatorCard = () => {
+  const router = useRouter();
+
   const handleBecomeCreator = () => {
-    console.log('Become a Creator clicked');
-    // Navigate to creator onboarding
+    router.push('/settings/creator-application');
   };
 
   return (
