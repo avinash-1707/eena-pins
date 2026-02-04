@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Image from "next/image";
 
-type Step = "phone" | "otp";
+type Step = "phone" | "otp" | "onboarding";
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -29,16 +29,19 @@ const GoogleIcon = () => (
   </svg>
 );
 
-export default function SignInPage() {
+function SignInContent() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
 
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
-  const [loading, setLoading] = useState<"phone" | "otp" | "google" | null>(
-    null,
-  );
+  const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [bio, setBio] = useState("");
+  const [loading, setLoading] = useState<
+    "phone" | "otp" | "google" | "onboarding" | null
+  >(null);
   const [error, setError] = useState("");
 
   const handleSendOtp = async () => {
@@ -71,17 +74,32 @@ export default function SignInPage() {
     }
     setError("");
     setLoading("otp");
+    // Move to onboarding step instead of signing in immediately
+    setStep("onboarding");
+    setLoading(null);
+  };
+
+  const handleOnboardingSubmit = async () => {
+    if (!username.trim()) {
+      setError("Please enter a username");
+      return;
+    }
+    setError("");
+    setLoading("onboarding");
     try {
       const result = await signIn("phone-otp", {
         phone: phone.trim(),
         otp: otp.trim(),
+        username: username.trim(),
+        name: fullName.trim(),
+        description: bio.trim(),
         redirect: false,
         callbackUrl,
       });
       if (result?.error) throw new Error(result.error);
       if (result?.url) window.location.href = result.url;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Invalid OTP");
+      setError(e instanceof Error ? e.message : "Failed to complete signup");
     } finally {
       setLoading(null);
     }
@@ -136,14 +154,18 @@ export default function SignInPage() {
 
         {/* Card */}
         <div className="w-full bg-white rounded-3xl border border-violet-100 shadow-[0_4px_32px_rgba(139,92,246,0.07),0_1px_4px_rgba(0,0,0,0.04)] px-6 pt-7 pb-8">
-          {/* Back button — OTP step only */}
-          {step === "otp" && (
+          {/* Back button — OTP and onboarding steps */}
+          {(step === "otp" || step === "onboarding") && (
             <button
               type="button"
               onClick={() => {
-                setStep("phone");
+                if (step === "onboarding") {
+                  setStep("otp");
+                } else {
+                  setStep("phone");
+                  setOtp("");
+                }
                 setError("");
-                setOtp("");
               }}
               className="mb-4 -ml-1 flex items-center gap-1.5 text-violet-500 hover:text-violet-700 transition-colors duration-200"
               aria-label="Back"
@@ -155,16 +177,22 @@ export default function SignInPage() {
 
           {/* Heading */}
           <h1 className="text-[22px] font-semibold text-gray-900 tracking-[-0.02em] leading-tight">
-            {step === "phone" ? "Welcome back" : "Verify your number"}
+            {step === "phone"
+              ? "Welcome back"
+              : step === "otp"
+                ? "Verify your number"
+                : "Complete your profile"}
           </h1>
           <p className="text-[13px] text-gray-400 mt-1.5 mb-6 leading-snug">
             {step === "phone" ? (
               "Sign in with your phone number"
-            ) : (
+            ) : step === "otp" ? (
               <>
                 {`We sent a 6-digit code to `}
                 <span className="text-violet-600 font-semibold">{phone}</span>
               </>
+            ) : (
+              "Add a username and tell us about yourself"
             )}
           </p>
 
@@ -342,6 +370,63 @@ export default function SignInPage() {
               </button>
             </div>
           )}
+
+          {/* ─── ONBOARDING STEP ──────────────────────────────────────────── */}
+          {step === "onboarding" && (
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em] mb-2">
+                Username
+              </label>
+              <input
+                type="text"
+                autoFocus
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleOnboardingSubmit()}
+                placeholder="your_username"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#fafafa] text-[15px] text-gray-900 placeholder-gray-300 outline-none transition-all duration-200 focus:border-violet-400 focus:bg-white focus:shadow-[0_0_0_3px_rgba(139,92,246,0.1)] mb-4"
+              />
+
+              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em] mb-2">
+                Full name
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="John Doe"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#fafafa] text-[15px] text-gray-900 placeholder-gray-300 outline-none transition-all duration-200 focus:border-violet-400 focus:bg-white focus:shadow-[0_0_0_3px_rgba(139,92,246,0.1)] mb-4"
+              />
+
+              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em] mb-2">
+                Bio <span className="text-gray-300">(optional)</span>
+              </label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Tell us a bit about yourself…"
+                rows={3}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-[#fafafa] text-[15px] text-gray-900 placeholder-gray-300 outline-none transition-all duration-200 focus:border-violet-400 focus:bg-white focus:shadow-[0_0_0_3px_rgba(139,92,246,0.1)] mb-5 resize-none"
+              />
+
+              {/* Complete signup CTA */}
+              <button
+                type="button"
+                onClick={handleOnboardingSubmit}
+                disabled={loading === "onboarding"}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 text-white text-[14px] font-semibold shadow-[0_4px_16px_rgba(139,92,246,0.28)] hover:shadow-[0_6px_20px_rgba(139,92,246,0.38)] active:scale-[0.97] disabled:opacity-55 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                {loading === "onboarding" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Creating
+                    account…
+                  </>
+                ) : (
+                  "Complete signup"
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -358,5 +443,13 @@ export default function SignInPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense>
+      <SignInContent />
+    </Suspense>
   );
 }
