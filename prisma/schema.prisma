@@ -78,7 +78,6 @@ model BrandProfile {
   // Relations
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   products   Product[]
-  payouts    Payout[]
   orderItems OrderItem[]
 }
 
@@ -204,12 +203,6 @@ enum PaymentStatus {
   REFUNDED
 }
 
-enum PayoutStatus {
-  PENDING
-  RELEASED
-  FAILED
-}
-
 model Order {
   id     String      @id @default(uuid())
   userId String
@@ -222,13 +215,15 @@ model Order {
   razorpayOrderId String? @unique
   receipt         String? // your internal receipt/order no
 
+  deliveredAt       DateTime? // set when status -> DELIVERED
+  returnWindowEndsAt DateTime? // deliveredAt + N days for payout eligibility
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user    User        @relation(fields: [userId], references: [id])
   items   OrderItem[]
   payment Payment?
-  payouts Payout[]
 
   @@index([userId])
 }
@@ -268,27 +263,10 @@ model Payment {
 
   paidAt DateTime?
 
+  refundedAt       DateTime?
+  razorpayRefundId String?
+
   createdAt DateTime @default(now())
 
   order Order @relation(fields: [orderId], references: [id])
-}
-
-model Payout {
-  id String @id @default(uuid())
-
-  orderId        String
-  brandProfileId String
-
-  amount Int // brandAmount
-  status PayoutStatus @default(PENDING)
-
-  razorpayTransferId String?   @unique
-  releasedAt         DateTime?
-
-  createdAt DateTime @default(now())
-
-  order        Order        @relation(fields: [orderId], references: [id])
-  brandProfile BrandProfile @relation(fields: [brandProfileId], references: [id])
-
-  @@index([brandProfileId])
 }

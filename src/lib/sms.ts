@@ -1,78 +1,74 @@
-const SMSZONE_API_URL = "http://www.smszone.in/sendsms.asp";
+import axios from "axios";
 
-export interface SendSMSOptions {
-  /** Comma-separated mobile numbers or array of numbers */
-  numbers: string | string[];
-  /** The message to send */
-  message: string;
-  /** Optional: SenderID/HeaderID (uses SMSZONE_SENDERID from env if not set) */
-  senderId?: string;
-  /** Optional: Future date/time for scheduled send (format: DD/MM/YY) */
-  scheduleDate?: string;
-  /** Optional: DLT Template Id for India */
-  tid?: string;
-}
+const AUTHKEY_REST_API_URL =
+  "https://console.authkey.io/restapi/requestjson.php";
 
-function getEnvOrThrow(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
-
-/**
- * Send SMS via SMSZone API.
- * Requires SMSZONE_USERNAME and SMSZONE_PASSWORD in .env.
- * Optional: SMSZONE_SENDERID for default sender ID.
- */
 export async function sendSMS(
   numbersOrPhone: string | string[],
   message: string,
-  options?: Partial<Omit<SendSMSOptions, "numbers" | "message">>
+  options?: {
+    senderId?: string;
+    countryCode?: string;
+  }
 ): Promise<{ success: boolean; error?: string }> {
-  const username = getEnvOrThrow("SMSZONE_USERNAME");
-  const password = getEnvOrThrow("SMSZONE_PASSWORD");
-  const senderId =
-    options?.senderId ?? process.env.SMSZONE_SENDERID ?? undefined;
+  const apiKey = process.env.AUTHKEY_API_KEY;
+  if (!apiKey) throw new Error("Missing AUTHKEY_API_KEY");
 
-  const numbers =
+  const sid =
+    options?.senderId ?? process.env.AUTHKEY_SENDERID ?? undefined;
+  if (!sid) return { success: false, error: "Missing senderId (sid)" };
+
+  const country_code = options?.countryCode ?? "91";
+
+  const mobile =
     typeof numbersOrPhone === "string"
       ? numbersOrPhone
       : numbersOrPhone.join(",");
 
-  const params = new URLSearchParams({
-    page: "SendSmsBulk",
-    username,
-    password,
-    number: numbers,
-    message,
-  });
-
-  if (senderId) {
-    params.set("senderid", senderId);
-  }
-  if (options?.scheduleDate) {
-    params.set("scheduledate", options.scheduleDate);
-  }
-  if (options?.tid) {
-    params.set("tid", options.tid);
-  }
-
-  const url = `${SMSZONE_API_URL}?${params.toString()}`;
-
   try {
-    const res = await fetch(url);
-    const text = await res.text();
+    const res = await axios.post(
+      AUTHKEY_REST_API_URL,
+      {
+        country_code,
+        mobile,
+        sid,
+        message, // IMPORTANT: REST API expects "message"
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${apiKey}`,
+        },
+        timeout: 5000,
+      }
+    );
 
-    if (!res.ok) {
-      return { success: false, error: `HTTP ${res.status}: ${text}` };
+    /**
+     * AuthKey REST API response example:
+     * {
+     *   "message": "SMS sent successfully",
+     *   "type": "success"
+     * }
+     */
+
+    if (res.data?.type === "success") {
+      return { success: true };
     }
 
-    // SMSZone may return success/failure in response body; adjust based on actual API response
-    return { success: true };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { success: false, error: message };
+    return {
+      success: false,
+      error: res.data?.message ?? "Unknown AuthKey error",
+    };
+  } catch (err: any) {
+    if (err.response) {
+      return {
+        success: false,
+        error: `HTTP ${err.response.status}: ${JSON.stringify(
+          err.response.data
+        )}`,
+      };
+    }
+
+    return { success: false, error: err.message };
   }
 }

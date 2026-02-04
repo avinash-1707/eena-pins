@@ -71,7 +71,8 @@ export default function NewProductPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const price = priceRupees ? Math.round(parseFloat(priceRupees)) : 0;
+    // Store price in paise (DB); user enters rupees
+    const price = priceRupees ? Math.round(parseFloat(priceRupees) * 100) : 0;
     if (
       !name.trim() ||
       price < 0 ||

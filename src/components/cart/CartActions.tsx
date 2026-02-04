@@ -9,8 +9,7 @@ const CartActions = () => {
   const router = useRouter();
 
   const handleCheckout = () => {
-    console.log('Proceeding to checkout...');
-    // Later: router.push('/checkout');
+    router.push("/checkout");
   };
 
   const handleContinueShopping = () => {
