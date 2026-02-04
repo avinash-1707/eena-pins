@@ -309,7 +309,7 @@ export default function SignInPage() {
                         );
                       cells?.[Math.min(pasted.length, 5)]?.focus();
                     }}
-                    className="w-11 h-[52px] rounded-xl text-center border border-gray-200 bg-[#fafafa] text-[19px] font-semibold text-gray-900 outline-none transition-all duration-200 focus:border-violet-400 focus:bg-white focus:shadow-[0_0_0_3px_rgba(139,92,246,0.1)] placeholder-gray-200 caret-violet-500"
+                    className="w-11 h-13 rounded-xl text-center border border-gray-200 bg-[#fafafa] text-[19px] font-semibold text-gray-900 outline-none transition-all duration-200 focus:border-violet-400 focus:bg-white focus:shadow-[0_0_0_3px_rgba(139,92,246,0.1)] placeholder-gray-200 caret-violet-500"
                     placeholder="·"
                   />
                 ))}

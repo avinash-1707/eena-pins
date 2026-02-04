@@ -7,12 +7,17 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/option";
 import { z } from "zod";
 
 const createCheckoutSchema = z.object({
-  items: z.array(
-    z.object({
-      productId: z.string().min(1),
-      quantity: z.number().int().min(1),
-    })
-  ).min(1),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().min(1),
+        quantity: z.number().int().min(1),
+      }),
+    )
+    .min(1),
+  shippingAddressId: z.string().min(1, "Shipping address is required"),
+  billingAddressId: z.string().optional(),
+  useShippingAsBilling: z.boolean().default(false),
   idempotencyKey: z.string().optional(),
 });
 
@@ -29,15 +34,53 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json(
         { message: "Invalid request", errors: parsed.error.flatten() },
-        { status: 400 }
+        { status: 400 },
       );
     }
-    const { items: requestItems, idempotencyKey } = parsed.data;
+    const {
+      items: requestItems,
+      shippingAddressId,
+      billingAddressId,
+      useShippingAsBilling,
+      idempotencyKey,
+    } = parsed.data;
+
+    // Validate shipping address belongs to user
+    const shippingAddress = await prisma.address.findUnique({
+      where: { id: shippingAddressId },
+    });
+    if (!shippingAddress || shippingAddress.userId !== userId) {
+      return NextResponse.json(
+        { message: "Invalid shipping address" },
+        { status: 400 },
+      );
+    }
+
+    // Validate billing address if provided
+    let finalBillingAddressId = useShippingAsBilling
+      ? shippingAddressId
+      : billingAddressId;
+    if (finalBillingAddressId && finalBillingAddressId !== shippingAddressId) {
+      const billingAddress = await prisma.address.findUnique({
+        where: { id: finalBillingAddressId },
+      });
+      if (!billingAddress || billingAddress.userId !== userId) {
+        return NextResponse.json(
+          { message: "Invalid billing address" },
+          { status: 400 },
+        );
+      }
+    }
 
     if (idempotencyKey) {
       const existing = await prisma.order.findFirst({
         where: { userId, receipt: idempotencyKey, status: "CREATED" },
-        select: { id: true, razorpayOrderId: true, totalAmount: true, currency: true },
+        select: {
+          id: true,
+          razorpayOrderId: true,
+          totalAmount: true,
+          currency: true,
+        },
       });
       if (existing?.razorpayOrderId) {
         return NextResponse.json({
@@ -59,11 +102,18 @@ export async function POST(req: NextRequest) {
     if (missing.length > 0) {
       return NextResponse.json(
         { message: "Some products not found", productIds: missing },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const orderLines: { productId: string; brandProfileId: string; quantity: number; price: number; commission: number; brandAmount: number }[] = [];
+    const orderLines: {
+      productId: string;
+      brandProfileId: string;
+      quantity: number;
+      price: number;
+      commission: number;
+      brandAmount: number;
+    }[] = [];
     let totalAmount = 0;
     let platformFee = 0;
 
@@ -86,7 +136,7 @@ export async function POST(req: NextRequest) {
     if (totalAmount < 100) {
       return NextResponse.json(
         { message: "Order total must be at least ₹1.00 (100 paise)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -98,6 +148,8 @@ export async function POST(req: NextRequest) {
           totalAmount,
           platformFee,
           currency: "INR",
+          shippingAddressId,
+          billingAddressId: finalBillingAddressId,
           receipt: idempotencyKey ?? undefined, // keep for idempotency lookup; else set to order.id below
         },
       });
@@ -138,7 +190,7 @@ export async function POST(req: NextRequest) {
     console.error("POST /api/checkout/create error:", error);
     return NextResponse.json(
       { message: "Failed to create checkout" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

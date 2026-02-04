@@ -1,70 +1,60 @@
 import axios from "axios";
 
-const AUTHKEY_REST_API_URL =
-  "https://console.authkey.io/restapi/requestjson.php";
+const AUTHKEY_GET_API_URL = "https://api.authkey.io/request";
 
 export async function sendSMS(
-  numbersOrPhone: string | string[],
-  message: string,
+  mobile: string,
+  otp: string,
   options?: {
     senderId?: string;
     countryCode?: string;
-  }
-): Promise<{ success: boolean; error?: string }> {
-  const apiKey = process.env.AUTHKEY_API_KEY;
-  if (!apiKey) throw new Error("Missing AUTHKEY_API_KEY");
+  },
+): Promise<{ success: boolean; error?: string; logId?: string }> {
+  const authkey = process.env.AUTHKEY_API_KEY;
+  if (!authkey) throw new Error("Missing AUTHKEY_API_KEY");
 
-  const sid =
-    options?.senderId ?? process.env.AUTHKEY_SENDERID ?? undefined;
+  const sid = options?.senderId ?? process.env.AUTHKEY_SENDERID ?? undefined;
   if (!sid) return { success: false, error: "Missing senderId (sid)" };
 
   const country_code = options?.countryCode ?? "91";
 
-  const mobile =
-    typeof numbersOrPhone === "string"
-      ? numbersOrPhone
-      : numbersOrPhone.join(",");
-
   try {
-    const res = await axios.post(
-      AUTHKEY_REST_API_URL,
-      {
-        country_code,
+    const res = await axios.get(AUTHKEY_GET_API_URL, {
+      params: {
+        authkey,
         mobile,
+        country_code,
         sid,
-        message, // IMPORTANT: REST API expects "message"
+        otp,
       },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Basic ${apiKey}`,
-        },
-        timeout: 5000,
-      }
-    );
+      timeout: 5000,
+    });
 
     /**
-     * AuthKey REST API response example:
+     * Expected response:
      * {
-     *   "message": "SMS sent successfully",
-     *   "type": "success"
+     *   "LogID": "xxxx",
+     *   "Message": "Submitted Successfully"
      * }
      */
 
-    if (res.data?.type === "success") {
-      return { success: true };
+    if (res.data?.Message === "Submitted Successfully") {
+      return {
+        success: true,
+        logId: res.data.LogID,
+      };
     }
 
     return {
       success: false,
-      error: res.data?.message ?? "Unknown AuthKey error",
+      error: res.data?.Message ?? "Unknown AuthKey error",
     };
   } catch (err: any) {
     if (err.response) {
       return {
         success: false,
         error: `HTTP ${err.response.status}: ${JSON.stringify(
-          err.response.data
+          err.response.data,
         )}`,
       };
     }

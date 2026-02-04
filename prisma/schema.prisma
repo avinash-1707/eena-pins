@@ -39,7 +39,8 @@ model User {
   createdAt DateTime @default(now())
 
   // Customer
-  orders Order[]
+  orders    Order[]
+  addresses Address[]
 
   // Brand access
   brandProfile   BrandProfile?
@@ -91,6 +92,31 @@ model BrandRequest {
   reviewedById String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Address {
+  id String @id @default(uuid())
+
+  userId String
+  
+  // Address details
+  fullName    String
+  phone       String
+  street      String
+  city        String
+  state       String
+  pincode     String
+  label       String? // "Home", "Work", etc.
+  isDefault   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shippingOrders Order[] @relation("ShippingAddress")
+  billingOrders  Order[] @relation("BillingAddress")
+
+  @@index([userId])
 }
 
 model PhoneOTP {
@@ -215,17 +241,25 @@ model Order {
   razorpayOrderId String? @unique
   receipt         String? // your internal receipt/order no
 
+  // Shipping and Billing Addresses
+  shippingAddressId String?
+  billingAddressId  String?
+
   deliveredAt       DateTime? // set when status -> DELIVERED
   returnWindowEndsAt DateTime? // deliveredAt + N days for payout eligibility
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User        @relation(fields: [userId], references: [id])
-  items   OrderItem[]
-  payment Payment?
+  user              User         @relation(fields: [userId], references: [id])
+  shippingAddress   Address?     @relation("ShippingAddress", fields: [shippingAddressId], references: [id], onDelete: SetNull)
+  billingAddress    Address?     @relation("BillingAddress", fields: [billingAddressId], references: [id], onDelete: SetNull)
+  items             OrderItem[]
+  payment           Payment?
 
   @@index([userId])
+  @@index([shippingAddressId])
+  @@index([billingAddressId])
 }
 
 model OrderItem {
