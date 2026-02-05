@@ -1,12 +1,12 @@
-"use client"
-import React from 'react';
-import Image from 'next/image';
-import { MessageCircle } from 'lucide-react';
+"use client";
+import React from "react";
+import Image from "next/image";
+import { MessageCircle } from "lucide-react";
 
 const SettingsHeader = () => {
   return (
     <header className="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-200">
-      <div className="flex items-center justify-between px-4 py-3 max-w-screen-xl mx-auto">
+      <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
         <div className="w-10"></div>
 
         <Image

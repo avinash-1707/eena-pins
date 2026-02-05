@@ -79,55 +79,79 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async signIn() {
+    async signIn({ user, account }) {
+      if (!account) return false;
+
+      // 🌐 GOOGLE
+      if (account.provider === "google") {
+        const email = user.email!;
+
+        let dbUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email },
+              {
+                accounts: {
+                  some: {
+                    provider: "google",
+                    providerAccountId: account.providerAccountId,
+                  },
+                },
+              },
+            ],
+          },
+        });
+
+        // 1️⃣ Create user if none exists
+        if (!dbUser) {
+          dbUser = await prisma.user.create({
+            data: {
+              email,
+              username: email.split("@")[0],
+              name: user.name,
+              avatarUrl: user.image,
+              description: "",
+            },
+          });
+        }
+
+        // 2️⃣ Link account if not linked
+        const alreadyLinked = await prisma.account.findFirst({
+          where: {
+            provider: account.provider,
+            providerAccountId: account.providerAccountId,
+          },
+        });
+
+        if (!alreadyLinked) {
+          await prisma.account.create({
+            data: {
+              userId: dbUser.id,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+              type: account.type,
+            },
+          });
+        }
+      }
+
+      // 📱 PHONE OTP
+      if (account.provider === "phone-otp") {
+        // already handled in authorize()
+        return true;
+      }
+
       return true;
     },
 
-    async jwt({ token, user, account }) {
-      // FIRST LOGIN (any provider)
-      if (user && account) {
-        let dbUser;
-
-        // 🌐 Google
-        if (account.provider === "google") {
-          const email = user.email!;
-
-          dbUser = await prisma.user.findUnique({
-            where: { email },
-          });
-
-          if (!dbUser) {
-            dbUser = await prisma.user.create({
-              data: {
-                email,
-                username: email.split("@")[0],
-                description: "",
-                name: user.name,
-                avatarUrl: user.image,
-                provider: "google",
-                providerAccountId: account.providerAccountId,
-              },
-            });
-          }
-        }
-
-        // 📱 Phone OTP (Credentials)
-        if (account.provider === "phone-otp") {
-          dbUser = await prisma.user.findUnique({
-            where: { id: user.id },
-          });
-
-          if (!dbUser) throw new Error("User not found after OTP login");
-        }
-
-        // 🔐 Normalize token (COMMON FOR ALL PROVIDERS)
-        token.id = dbUser!.id;
-        token.username = dbUser!.username;
-        token.role = dbUser!.role;
-        token.avatarUrl = dbUser!.avatarUrl ?? undefined;
-        token.name = dbUser!.name ?? dbUser!.username;
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.username = user.username;
+        token.role = user.role;
+        token.avatarUrl = user.avatarUrl ?? undefined;
+        token.name = user.name ?? user.username;
       }
-
       return token;
     },
     async session({ session, token }) {

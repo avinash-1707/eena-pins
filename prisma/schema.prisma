@@ -19,14 +19,24 @@ enum BrandRequestStatus {
   REJECTED
 }
 
+model Account {
+  id                String   @id @default(uuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  type              String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
 model User {
   id String @id @default(uuid())
 
-  // Auth
-  email             String? @unique
-  phone             String? @unique
-  provider          String?
-  providerAccountId String?
+  // Auth identifiers
+  email String? @unique
+  phone String? @unique
 
   // Profile
   username    String  @unique
@@ -37,6 +47,9 @@ model User {
   role Role @default(USER)
 
   createdAt DateTime @default(now())
+
+  // Relations
+  accounts Account[]
 
   // Customer
   orders    Order[]
