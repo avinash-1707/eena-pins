@@ -74,9 +74,37 @@ function SignInContent() {
     }
     setError("");
     setLoading("otp");
-    // Move to onboarding step instead of signing in immediately
-    setStep("onboarding");
-    setLoading(null);
+    try {
+      const res = await fetch("/api/auth/phone/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim(), otp: otp.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to verify OTP");
+
+      if (!data.valid) {
+        throw new Error(data.error ?? "Invalid OTP");
+      }
+
+      // If phone already has a user, sign in directly. Otherwise show onboarding.
+      if (data.exists) {
+        const result = await signIn("phone-otp", {
+          phone: phone.trim(),
+          otp: otp.trim(),
+          redirect: false,
+          callbackUrl,
+        });
+        if (result?.error) throw new Error(result.error);
+        if (result?.url) window.location.href = result.url;
+      } else {
+        setStep("onboarding");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to verify OTP");
+    } finally {
+      setLoading(null);
+    }
   };
 
   const handleOnboardingSubmit = async () => {

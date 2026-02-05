@@ -144,13 +144,41 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
 
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
-        token.id = user.id;
-        token.username = user.username;
-        token.role = user.role;
-        token.avatarUrl = user.avatarUrl ?? undefined;
-        token.name = user.name ?? user.username;
+        // For Google login, fetch the actual DB user
+        if (account?.provider === "google") {
+          const dbUser = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { email: user.email! },
+                {
+                  accounts: {
+                    some: {
+                      provider: "google",
+                      providerAccountId: account.providerAccountId,
+                    },
+                  },
+                },
+              ],
+            },
+          });
+
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.username = dbUser.username;
+            token.role = dbUser.role;
+            token.avatarUrl = dbUser.avatarUrl ?? undefined;
+            token.name = dbUser.name ?? dbUser.username;
+          }
+        } else {
+          // For phone-otp, the user object already has correct DB data
+          token.id = user.id;
+          token.username = user.username;
+          token.role = user.role;
+          token.avatarUrl = user.avatarUrl ?? undefined;
+          token.name = user.name ?? user.username;
+        }
       }
       return token;
     },

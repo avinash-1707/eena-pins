@@ -38,6 +38,10 @@ model User {
   email String? @unique
   phone String? @unique
 
+  // Email verification
+  emailVerificationToken        String?   @unique
+  emailVerificationTokenExpiresAt DateTime?
+
   // Profile
   username    String  @unique
   name        String?
