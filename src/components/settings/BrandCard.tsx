@@ -2,11 +2,14 @@
 
 import React from 'react';
 import { Store } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const BrandCard = () => {
+  const router = useRouter();
+
   const handleBecomePartner = () => {
-    console.log('Become a Partner clicked');
-    // Navigate to brand partnership
+    // Navigate to brand page
+    router.push('/brand');
   };
 
   return (
