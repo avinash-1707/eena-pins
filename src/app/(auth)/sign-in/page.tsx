@@ -224,6 +224,18 @@ function SignInContent() {
             )}
           </p>
 
+          {/* Credential linking notice */}
+          {step === "phone" && (
+            <div className="mb-6 p-3.5 rounded-xl bg-blue-50 border border-blue-100">
+              <p className="text-[12px] text-blue-700 leading-relaxed">
+                <span className="font-semibold">Heads up:</span> If you
+                previously created an account using a different sign-in method,
+                please ensure your credentials are linked to your existing
+                account to avoid creating duplicate accounts.
+              </p>
+            </div>
+          )}
+
           {/* Error */}
           {error && (
             <div

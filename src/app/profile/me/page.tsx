@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import BottomNav from "@/components/layout/BottomNav";
 
 interface ProfileData {
   id: string;
@@ -1014,6 +1015,8 @@ export default function PersonalProfile() {
             )}
           </section>
         )}
+
+        <BottomNav />
 
         {/* Sign out */}
         <div className="mt-8">
