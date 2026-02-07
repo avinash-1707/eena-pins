@@ -1,47 +1,42 @@
 'use client';
 
 import React from 'react';
-import { Store } from 'lucide-react';
+import { Globe } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const BrandCard = () => {
   const router = useRouter();
 
   const handleBecomePartner = () => {
-    // Navigate to brand page
-    router.push('/brand');
+    router.push('/settings/BrandFormPage');
   };
 
   return (
-    <div className="bg-gradient-to-br from-amber-100 via-orange-50 to-red-50 rounded-2xl shadow-md p-6 relative overflow-hidden">
-      {/* Decorative Icon */}
-      <div className="absolute top-4 right-4 opacity-20">
-        <Store className="w-20 h-20 text-amber-700" />
-      </div>
-
+    <div className="bg-[#FFF8E8] rounded-2xl shadow-sm px-8 py-10 text-center relative">
+      
       {/* Icon */}
-      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
-        <Store className="w-8 h-8 text-amber-700" />
+      <div className="w-14 h-14 bg-transparent flex items-center justify-center mx-auto mb-6">
+        <Globe className="w-7 h-7 text-[#8B7A5E]" />
       </div>
 
       {/* Content */}
-      <h3 className="text-xl font-bold text-gray-900 mb-2">
+      <h3 className="text-2xl font-semibold text-gray-900 mb-3">
         Are You a Brand?
       </h3>
-      <p className="text-sm text-gray-700 mb-4 leading-relaxed">
-        Join rewards and reach thousands of design-conscious consumers. List your products with us!
+
+      <p className="text-sm text-gray-600 mb-8 leading-relaxed">
+        Join Haven and reach thousands of design-conscious customers.
+        List your products and grow your business with us.
       </p>
 
       {/* Button */}
       <button
         onClick={handleBecomePartner}
-        className="bg-amber-700 hover:bg-amber-800 active:scale-95 text-white font-semibold px-6 py-3 rounded-full transition-all shadow-md"
+        className="bg-[#1F2B1E] hover:bg-[#162016] text-white font-medium px-8 py-3 rounded-full transition-all active:scale-95"
       >
         Become a Partner
       </button>
 
-      {/* Decorative Emoji */}
-      <span className="absolute bottom-4 right-4 text-4xl">👜</span>
     </div>
   );
 };

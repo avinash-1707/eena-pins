@@ -1,4 +1,5 @@
 import { CreditCard, Lock } from "lucide-react";
+import BackButton from "@/components/layout/BackButton";
 
 type PaymentMethod = {
   id: string;
@@ -24,6 +25,7 @@ export default function PaymentSettingsPage() {
   return (
     <div className="min-h-screen bg-[#F7F4EF] px-4 py-6 sm:px-6">
       <div className="mx-auto max-w-md space-y-6 sm:max-w-lg">
+        <BackButton />
 
         {/* Header */}
         <div className="flex items-center justify-between">
