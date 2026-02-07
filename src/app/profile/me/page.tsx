@@ -19,7 +19,7 @@ import {
   Copy,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+// note: avoid using `useSearchParams` here to prevent CSR bailout during prerender
 import BottomNav from "@/components/layout/BottomNav";
 
 interface ProfileData {
@@ -362,7 +362,6 @@ function PhoneVerificationModal({
 }
 
 export default function PersonalProfile() {
-  const searchParams = useSearchParams();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -404,11 +403,16 @@ export default function PersonalProfile() {
       const data = await res.json();
       setProfile(data);
 
-      // Check for email verification completion
-      const verifyToken = searchParams.get("verifyEmail");
-      const newEmail = searchParams.get("newEmail");
-      if (verifyToken && newEmail) {
-        await confirmEmailVerification(verifyToken, newEmail);
+      // Check for email verification completion (read from window search params)
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const verifyToken = params.get("verifyEmail");
+        const newEmail = params.get("newEmail");
+        if (verifyToken && newEmail) {
+          await confirmEmailVerification(verifyToken, newEmail);
+        }
+      } catch (e) {
+        // ignore on SSR or if window not available
       }
     } catch {
       setError("Something went wrong");

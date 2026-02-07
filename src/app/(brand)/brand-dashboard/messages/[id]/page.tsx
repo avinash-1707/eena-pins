@@ -22,7 +22,7 @@ type ConversationDetail = {
   order: { receipt?: string; status: string };
 };
 
-export default function MessageThreadPage() {
+export default function BrandMessageThreadPage() {
   const params = useParams();
   const { data: session } = useSession();
   const conversationId = params.id as string;
@@ -144,7 +144,7 @@ export default function MessageThreadPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f7f4ef] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-24">
         <div className="text-gray-500">Loading conversation...</div>
       </div>
     );
@@ -152,17 +152,17 @@ export default function MessageThreadPage() {
 
   if (!conversation) {
     return (
-      <div className="min-h-screen bg-[#f7f4ef] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-24">
         <div className="text-gray-500">Conversation not found</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f4ef] flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-24">
       <Header
-        brand={conversation.brandProfile.brandName}
-        logo={conversation.brandProfile.logoUrl}
+        userName={conversation.user.name || conversation.user.username}
+        userAvatar={conversation.user.avatarUrl}
         orderId={conversation.order.receipt || conversation.id}
         status={conversation.order.status}
       />
@@ -176,16 +176,14 @@ export default function MessageThreadPage() {
 
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-gray-500 text-center">
-              No messages yet. Start the conversation!
-            </p>
+            <p className="text-gray-500 text-center">No messages yet</p>
           </div>
         ) : (
           messages.map((msg) => (
             <MessageCard
               key={msg.id}
               message={msg}
-              isFromUser={msg.senderId === session?.user?.id}
+              isFromUser={msg.senderId === conversation.user.id}
             />
           ))
         )}
@@ -212,13 +210,13 @@ export default function MessageThreadPage() {
 // ============== Components ==============
 
 function Header({
-  brand,
-  logo,
+  userName,
+  userAvatar,
   orderId,
   status,
 }: {
-  brand: string;
-  logo?: string;
+  userName: string;
+  userAvatar?: string;
   orderId: string;
   status: string;
 }) {
@@ -233,18 +231,18 @@ function Header({
   };
 
   return (
-    <header className="flex items-center gap-3 px-4 py-3 border-b sticky top-0 bg-[#f7f4ef]">
-      {logo ? (
+    <header className="flex items-center gap-3 px-4 py-3 border-b sticky top-0 bg-white">
+      {userAvatar ? (
         <img
-          src={logo}
-          alt={brand}
+          src={userAvatar}
+          alt={userName}
           className="h-10 w-10 rounded-full object-cover"
         />
       ) : (
         <div className="h-10 w-10 rounded-full bg-gray-300" />
       )}
       <div className="flex-1">
-        <p className="text-sm font-semibold">{brand}</p>
+        <p className="text-sm font-semibold">{userName}</p>
         <p className="text-xs text-gray-500">Order #{orderId}</p>
       </div>
       <span
@@ -266,15 +264,15 @@ function MessageCard({
   isFromUser: boolean;
 }) {
   return (
-    <div className={`flex ${isFromUser ? "justify-end" : "justify-start"}`}>
+    <div className={`flex ${isFromUser ? "justify-start" : "justify-end"}`}>
       <div
         className={`max-w-[85%] ${
           isFromUser
-            ? "bg-[#1f2f1f] text-white rounded-3xl rounded-tr-lg"
-            : "bg-white text-gray-800 rounded-3xl rounded-tl-lg shadow-sm"
+            ? "bg-gray-100 text-gray-800 rounded-3xl rounded-tl-lg"
+            : "bg-[#1f2f1f] text-white rounded-3xl rounded-tr-lg"
         } px-4 py-3`}
       >
-        {!isFromUser && (
+        {isFromUser && (
           <p className="text-xs font-semibold text-gray-600 mb-1">
             {message.senderName}
           </p>
@@ -295,7 +293,7 @@ function MessageCard({
           </div>
         )}
         <p
-          className={`text-[11px] ${isFromUser ? "text-gray-300" : "text-gray-400"} mt-1`}
+          className={`text-[11px] ${isFromUser ? "text-gray-600" : "text-gray-300"} mt-1`}
         >
           {new Date(message.createdAt).toLocaleTimeString([], {
             hour: "2-digit",
@@ -331,7 +329,7 @@ function MessageInput({
   return (
     <form
       onSubmit={onSubmit}
-      className="border-t bg-[#f7f4ef] px-4 py-3 space-y-3"
+      className="border-t bg-white fixed bottom-0 left-0 right-0 px-4 py-3 space-y-3"
     >
       {attachedImages.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
@@ -361,14 +359,14 @@ function MessageInput({
           onChange={(e) => onChange(e.target.value)}
           placeholder="Type your message..."
           disabled={sending || uploading}
-          className="flex-1 rounded-full px-4 py-3 text-sm bg-white border border-gray-200 focus:outline-none focus:border-gray-400"
+          className="flex-1 rounded-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 focus:outline-none focus:border-gray-400"
         />
 
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="shrink-0 h-10 w-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-lg hover:bg-gray-50 disabled:opacity-50"
+          className="shrink-0 h-10 w-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-lg hover:bg-gray-100 disabled:opacity-50"
         >
           {uploading ? "⏳" : "📷"}
         </button>

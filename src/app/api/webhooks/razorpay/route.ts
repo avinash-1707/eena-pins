@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { verifyWebhookSignature } from "@/lib/razorpay";
+import { createConversation, createMessage } from "@/lib/messages";
 import { NextRequest, NextResponse } from "next/server";
 
 const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   const order = await prisma.order.findUnique({
     where: { razorpayOrderId },
-    include: { items: true, payment: true },
+    include: { items: true, payment: true, user: true },
   });
 
   if (!order) {
@@ -100,6 +101,46 @@ export async function POST(req: NextRequest) {
         data: { status: "PAID" },
       });
     });
+
+    // Create conversations for each brand in the order
+    // For each OrderItem, create a conversation between the buyer and the brand
+    const orderItems = await prisma.orderItem.findMany({
+      where: { orderId: order.id },
+      include: { brandProfile: true },
+    });
+
+    for (const item of orderItems) {
+      try {
+        // Create or get conversation between buyer and brand
+        const conversation = await createConversation({
+          userId: order.userId,
+          brandProfileId: item.brandProfileId,
+          orderId: order.id,
+        });
+
+        // Send initial message from brand to buyer
+        const brandProfile = await prisma.brandProfile.findUnique({
+          where: { id: item.brandProfileId },
+        });
+
+        if (brandProfile) {
+          const welcomeMessage = `Thank you for your order! We're excited to prepare your items and will keep you updated on the status. Feel free to reach out if you have any questions.`;
+
+          await createMessage({
+            conversationId: conversation.id,
+            senderId: brandProfile.userId, // brand owner's user ID
+            content: welcomeMessage,
+            attachments: [],
+          });
+        }
+      } catch (err) {
+        console.error(
+          `Failed to create conversation for order ${order.id}, brand ${item.brandProfileId}:`,
+          err,
+        );
+        // Don't fail the payment if conversation creation fails
+      }
+    }
   } catch (err) {
     console.error("Razorpay webhook payment.captured error:", err);
     return NextResponse.json({ message: "Processing failed" }, { status: 500 });

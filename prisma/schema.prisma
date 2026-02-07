@@ -66,6 +66,10 @@ model User {
   // Social
   ratings     UserRating[]
   collections Collection[]
+
+  // Messaging
+  conversations Conversation[]
+  sentMessages  Message[]
 }
 
 model BrandProfile {
@@ -94,9 +98,10 @@ model BrandProfile {
   updatedAt DateTime @updatedAt
 
   // Relations
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  products   Product[]
-  orderItems OrderItem[]
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products      Product[]
+  orderItems    OrderItem[]
+  conversations Conversation[]
 }
 
 model BrandRequest {
@@ -268,11 +273,12 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user              User         @relation(fields: [userId], references: [id])
-  shippingAddress   Address?     @relation("ShippingAddress", fields: [shippingAddressId], references: [id], onDelete: SetNull)
-  billingAddress    Address?     @relation("BillingAddress", fields: [billingAddressId], references: [id], onDelete: SetNull)
+  user              User            @relation(fields: [userId], references: [id])
+  shippingAddress   Address?        @relation("ShippingAddress", fields: [shippingAddressId], references: [id], onDelete: SetNull)
+  billingAddress    Address?        @relation("BillingAddress", fields: [billingAddressId], references: [id], onDelete: SetNull)
   items             OrderItem[]
   payment           Payment?
+  conversations     Conversation[]
 
   @@index([userId])
   @@index([shippingAddressId])
@@ -320,4 +326,53 @@ model Payment {
   createdAt DateTime @default(now())
 
   order Order @relation(fields: [orderId], references: [id])
+}
+
+model Conversation {
+  id String @id @default(uuid())
+
+  userId         String // buyer
+  brandProfileId String // brand owner
+  orderId        String // related order that triggered the conversation
+
+  lastMessageText String?
+  lastMessageAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brandProfile BrandProfile  @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  messages     Message[]
+
+  // Indexes
+  @@index([userId])
+  @@index([brandProfileId])
+  @@index([orderId])
+  @@unique([userId, brandProfileId, orderId])
+}
+
+model Message {
+  id String @id @default(uuid())
+
+  conversationId String
+  senderId       String // User.id (could be buyer or brand owner)
+
+  content      String?
+  attachments  Json? // array of {url: string, type: string, publicId: string}
+
+  isRead Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
 }

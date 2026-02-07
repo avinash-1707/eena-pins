@@ -1,57 +1,54 @@
 // app/settings/messages/page.tsx
-'use client';
-import { useState } from 'react';
-import Link from 'next/link';
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 
-// ------------------ types (future‑proof for backend) ------------------
+// ------------------ types ------------------
 export type MessageThread = {
   id: string;
   brandName: string;
-  avatar?: string;
+  brandLogo?: string;
   orderId: string;
-  lastMessage: string;
-  updatedAt: string; // ISO
-  status: 'shipped' | 'delivered' | 'pending';
+  orderReceipt?: string;
+  orderStatus: string;
+  lastMessageText?: string;
+  lastMessageAt?: string;
   unreadCount?: number;
 };
 
-// ------------------ mock data ------------------
-const MOCK_THREADS: MessageThread[] = [
-  {
-    id: '1',
-    brandName: 'Nordic Living',
-    orderId: 'HVN-45231',
-    lastMessage: 'Your order has been shipped! 🚚',
-    updatedAt: '2 hours ago',
-    status: 'shipped',
-    unreadCount: 1,
-  },
-  {
-    id: '2',
-    brandName: 'Lumina Studio',
-    orderId: 'HVN-45198',
-    lastMessage: 'Delivered! Hope you love it ✨',
-    updatedAt: '3 days ago',
-    status: 'delivered',
-  },
-  {
-    id: '3',
-    brandName: 'Artisan Collective',
-    orderId: 'HVN-45167',
-    lastMessage: 'Your order is being prepared',
-    updatedAt: '1 day ago',
-    status: 'pending',
-  },
-];
-
-const statusStyles: Record<MessageThread['status'], string> = {
-  shipped: 'bg-blue-100 text-blue-700',
-  delivered: 'bg-green-100 text-green-700',
-  pending: 'bg-orange-100 text-orange-700',
+const statusStyles: Record<string, string> = {
+  SHIPPED: "bg-blue-100 text-blue-700",
+  DELIVERED: "bg-green-100 text-green-700",
+  PROCESSING: "bg-orange-100 text-orange-700",
+  CREATED: "bg-gray-100 text-gray-700",
+  PAID: "bg-purple-100 text-purple-700",
+  CANCELLED: "bg-red-100 text-red-700",
+  REFUNDED: "bg-pink-100 text-pink-700",
 };
 
 export default function MessagesPage() {
-  const [threads] = useState(MOCK_THREADS); // replace with API later
+  const [threads, setThreads] = useState<MessageThread[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/conversations");
+        if (!res.ok) throw new Error("Failed to fetch conversations");
+        const data = await res.json();
+        setThreads(data.data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+        console.error("Error fetching conversations:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchConversations();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f7f4ef]">
@@ -59,15 +56,23 @@ export default function MessagesPage() {
         <h1 className="text-lg font-semibold">Messages 💬</h1>
       </header>
 
-      {threads.length === 0 ? (
+      {error && (
+        <div className="px-4 py-3 bg-red-50 text-red-700 text-sm">{error}</div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center h-[70vh]">
+          <div className="text-gray-500">Loading conversations...</div>
+        </div>
+      ) : threads.length === 0 ? (
         <div className="flex items-center justify-center h-[70vh] px-4">
           <div className="bg-white rounded-2xl shadow-md px-6 py-8 text-center w-full max-w-sm">
             <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center text-xl">
               💬
             </div>
-            <p className="text-lg font-semibold">Select a Conversation</p>
+            <p className="text-lg font-semibold">No Messages Yet</p>
             <p className="text-sm text-gray-500 mt-1">
-              Choose a brand conversation to view messages and tracking updates
+              Conversations with brands will appear here once you place an order
             </p>
           </div>
         </div>
@@ -77,29 +82,45 @@ export default function MessagesPage() {
             <li key={t.id}>
               <Link
                 href={`/settings/messages/${t.id}`}
-                className="flex items-center gap-3 px-4 py-4"
+                className="flex items-center gap-3 px-4 py-4 border-b hover:bg-gray-50 transition"
               >
-                <div className="h-12 w-12 rounded-full bg-gray-300 flex-shrink-0" />
+                <div className="h-12 w-12 rounded-full bg-gray-300 shrink-0 overflow-hidden">
+                  {t.brandLogo ? (
+                    <img
+                      src={t.brandLogo}
+                      alt={t.brandName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : null}
+                </div>
 
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{t.brandName}</p>
-                  <p className="text-xs text-gray-500">Order #{t.orderId}</p>
-                  <p className="text-sm text-gray-600 mt-1 truncate">
-                    {t.lastMessage}
+                  <p className="text-xs text-gray-500">
+                    Order #{t.orderReceipt || t.orderId}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">{t.updatedAt}</p>
+                  <p className="text-sm text-gray-600 mt-1 truncate">
+                    {t.lastMessageText || "No messages yet"}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {t.lastMessageAt
+                      ? new Date(t.lastMessageAt).toLocaleDateString()
+                      : "Just now"}
+                  </p>
                 </div>
 
                 <div className="flex flex-col items-end gap-2">
-                  {t.unreadCount && (
-                    <span className="h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                  {t.unreadCount && t.unreadCount > 0 && (
+                    <span className="h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-semibold">
                       {t.unreadCount}
                     </span>
                   )}
                   <span
-                    className={`text-[11px] px-2 py-1 rounded-full ${statusStyles[t.status]}`}
+                    className={`text-[11px] px-2 py-1 rounded-full font-medium ${
+                      statusStyles[t.orderStatus] || "bg-gray-100 text-gray-700"
+                    }`}
                   >
-                    {t.status.charAt(0).toUpperCase() + t.status.slice(1)}
+                    {t.orderStatus}
                   </span>
                 </div>
               </Link>

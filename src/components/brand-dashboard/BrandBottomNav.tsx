@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Package, ShoppingCart, User } from "lucide-react";
+import { Package, ShoppingCart, User, MessageCircle } from "lucide-react";
 
 const navItems = [
   { href: "/brand-dashboard", label: "Products", icon: Package },
   { href: "/brand-dashboard/payout", label: "Orders", icon: ShoppingCart },
+  { href: "/brand-dashboard/messages", label: "Messages", icon: MessageCircle },
   { href: "/brand-dashboard/profile", label: "Profile", icon: User },
 ] as const;
 
