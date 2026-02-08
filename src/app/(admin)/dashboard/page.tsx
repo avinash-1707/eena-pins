@@ -8,6 +8,7 @@ const PRODUCTS_PAGE_SIZE = 20;
 interface Stats {
   users: number;
   brands: number;
+  creators: number;
 }
 
 interface User {
@@ -15,7 +16,7 @@ interface User {
   name: string | null;
   username: string;
   phone: string | null;
-  role: "USER" | "BRAND" | "ADMIN";
+  role: "USER" | "BRAND" | "CREATOR" | "ADMIN";
 }
 
 interface Product {
@@ -46,7 +47,27 @@ interface BrandRequestWithUser {
   };
 }
 
-type Tab = "users" | "requests" | "products";
+interface CreatorRequestWithUser {
+  id: string;
+  userId: string;
+  status: string;
+  fullName: string;
+  username: string;
+  instagramHandle: string;
+  followers: number;
+  samplePostLink: string;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    createdAt: string;
+  };
+}
+
+type Tab = "users" | "requests" | "creator-requests" | "products";
 
 export default function Dashboard() {
   const [tab, setTab] = useState<Tab>("users");
@@ -57,6 +78,16 @@ export default function Dashboard() {
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [requestsError, setRequestsError] = useState<string | null>(null);
+  const [creatorRequests, setCreatorRequests] = useState<
+    CreatorRequestWithUser[]
+  >([]);
+  const [creatorRequestsLoading, setCreatorRequestsLoading] = useState(false);
+  const [creatorActioningId, setCreatorActioningId] = useState<string | null>(
+    null,
+  );
+  const [creatorRequestsError, setCreatorRequestsError] = useState<
+    string | null
+  >(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -125,6 +156,27 @@ export default function Dashboard() {
     }
   }
 
+  async function fetchCreatorRequests() {
+    setCreatorRequestsLoading(true);
+    setCreatorRequestsError(null);
+    try {
+      const res = await fetch("/api/admin/creator-requests");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setCreatorRequestsError(data.message ?? "Failed to load requests");
+        setCreatorRequests([]);
+        return;
+      }
+      const data = await res.json();
+      setCreatorRequests(data);
+    } catch {
+      setCreatorRequestsError("Failed to load requests");
+      setCreatorRequests([]);
+    } finally {
+      setCreatorRequestsLoading(false);
+    }
+  }
+
   const loadProductsPage = useCallback(
     async (cursor: string | null, append: boolean) => {
       const params = new URLSearchParams();
@@ -174,6 +226,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (tab === "requests") {
       fetchRequests();
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    if (tab === "creator-requests") {
+      fetchCreatorRequests();
     }
   }, [tab]);
 
@@ -311,6 +369,45 @@ export default function Dashboard() {
     }
   }
 
+  async function handleApproveCreator(id: string) {
+    setCreatorActioningId(id);
+    try {
+      const res = await fetch(`/api/admin/creator-requests/${id}/approve`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setCreatorRequestsError(data.message ?? "Failed to approve");
+        return;
+      }
+      await fetchCreatorRequests();
+      await fetchData();
+    } catch {
+      setCreatorRequestsError("Failed to approve");
+    } finally {
+      setCreatorActioningId(null);
+    }
+  }
+
+  async function handleRejectCreator(id: string) {
+    setCreatorActioningId(id);
+    try {
+      const res = await fetch(`/api/admin/creator-requests/${id}/reject`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setCreatorRequestsError(data.message ?? "Failed to reject");
+        return;
+      }
+      await fetchCreatorRequests();
+    } catch {
+      setCreatorRequestsError("Failed to reject");
+    } finally {
+      setCreatorActioningId(null);
+    }
+  }
+
   if (loading && tab === "users") {
     return (
       <div className="min-h-screen bg-white p-4">
@@ -356,6 +453,17 @@ export default function Dashboard() {
           </button>
           <button
             type="button"
+            onClick={() => setTab("creator-requests")}
+            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              tab === "creator-requests"
+                ? "border-purple-600 text-purple-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Creator Requests
+          </button>
+          <button
+            type="button"
             onClick={() => setTab("products")}
             className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               tab === "products"
@@ -370,7 +478,7 @@ export default function Dashboard() {
         {tab === "users" && (
           <>
             {/* Stats cards */}
-            <section className="mb-8 grid grid-cols-2 gap-3 sm:gap-4">
+            <section className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
               <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
                 <p className="text-sm font-medium text-gray-500">Users</p>
                 <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl">
@@ -381,6 +489,12 @@ export default function Dashboard() {
                 <p className="text-sm font-medium text-gray-500">Brands</p>
                 <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl">
                   {stats?.brands ?? 0}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-sm font-medium text-gray-500">Creators</p>
+                <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl">
+                  {stats?.creators ?? 0}
                 </p>
               </div>
             </section>
@@ -432,6 +546,8 @@ export default function Dashboard() {
                             ? "bg-purple-100 text-purple-700"
                             : user.role === "BRAND"
                               ? "bg-purple-50 text-purple-600"
+                              : user.role === "CREATOR"
+                                ? "bg-emerald-50 text-emerald-700"
                               : "bg-gray-100 text-gray-600"
                         }`}
                       >
@@ -537,6 +653,106 @@ export default function Dashboard() {
                           className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
                         >
                           {actioningId === req.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <XCircle className="h-4 w-4" />
+                          )}
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            )}
+          </>
+        )}
+
+        {tab === "creator-requests" && (
+          <>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Creator requests
+              </h2>
+              <button
+                onClick={() => fetchCreatorRequests()}
+                disabled={creatorRequestsLoading}
+                className="rounded-full bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+              >
+                Refresh
+              </button>
+            </div>
+
+            {creatorRequestsError && (
+              <p className="mb-4 text-sm text-red-600">
+                {creatorRequestsError}
+              </p>
+            )}
+
+            {creatorRequestsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+              </div>
+            ) : creatorRequests.length === 0 ? (
+              <div className="rounded-xl border border-gray-100 bg-gray-50 py-12 text-center">
+                <p className="text-gray-500">No pending requests</p>
+              </div>
+            ) : (
+              <section className="space-y-2">
+                {creatorRequests.map((req) => (
+                  <article
+                    key={req.id}
+                    className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900">
+                          {req.fullName}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          @{req.username} · {req.instagramHandle}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Followers: {req.followers.toLocaleString()}
+                        </p>
+                        {(req.user.email || req.user.phone) && (
+                          <p className="mt-1 text-xs text-gray-500">
+                            {req.user.email ?? req.user.phone ?? ""}
+                          </p>
+                        )}
+                        <a
+                          href={req.samplePostLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-block text-sm text-blue-600 hover:underline"
+                        >
+                          View sample post
+                        </a>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {new Date(req.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleApproveCreator(req.id)}
+                          disabled={creatorActioningId === req.id}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {creatorActioningId === req.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                          )}
+                          Allow
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRejectCreator(req.id)}
+                          disabled={creatorActioningId === req.id}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {creatorActioningId === req.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <XCircle className="h-4 w-4" />

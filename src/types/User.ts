@@ -20,4 +20,6 @@ export interface User {
     ratings?: UserRating[];
     collections?: Collection[];
     products?: Product[]; // only for BRAND users
+    creatorProfile?: unknown;
+    creatorRequest?: unknown;
 }

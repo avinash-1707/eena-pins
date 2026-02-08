@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { createRazorpayOrder } from "@/lib/razorpay";
 import { computeItemSplit } from "@/lib/commission";
+import { validateCouponForUser } from "@/lib/coupons";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/option";
@@ -19,6 +20,7 @@ const createCheckoutSchema = z.object({
   billingAddressId: z.string().optional(),
   useShippingAsBilling: z.boolean().default(false),
   idempotencyKey: z.string().optional(),
+  couponCode: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -43,6 +45,7 @@ export async function POST(req: NextRequest) {
       billingAddressId,
       useShippingAsBilling,
       idempotencyKey,
+      couponCode,
     } = parsed.data;
 
     // Validate shipping address belongs to user
@@ -92,6 +95,43 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    let coupon: { id: string; discountPercent: number } | null = null;
+    if (couponCode && couponCode.trim()) {
+      const validation = await validateCouponForUser(userId, couponCode);
+      if (!validation.valid) {
+        const message =
+          validation.reason === "not_found"
+            ? "Coupon not found"
+            : validation.reason === "not_owner"
+              ? "Coupon does not belong to you"
+              : validation.reason === "expired"
+                ? "Coupon has expired"
+                : "Coupon is not active";
+        return NextResponse.json({ message }, { status: 400 });
+      }
+
+      const existingOrder = await prisma.order.findFirst({
+        where: {
+          couponId: validation.coupon.id,
+          status: {
+            in: ["CREATED", "PAID", "PROCESSING", "SHIPPED", "DELIVERED"],
+          },
+        },
+        select: { id: true },
+      });
+      if (existingOrder) {
+        return NextResponse.json(
+          { message: "Coupon has already been used" },
+          { status: 409 },
+        );
+      }
+
+      coupon = {
+        id: validation.coupon.id,
+        discountPercent: validation.coupon.discountPercent,
+      };
+    }
+
     const productIds = [...new Set(requestItems.map((i) => i.productId))];
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
@@ -116,20 +156,27 @@ export async function POST(req: NextRequest) {
     }[] = [];
     let totalAmount = 0;
     let platformFee = 0;
+    const discountMultiplier = coupon
+      ? (100 - coupon.discountPercent) / 100
+      : 1;
 
     for (const { productId, quantity } of requestItems) {
       const product = productMap.get(productId)!;
       const itemTotal = product.price * quantity;
-      const { commission, brandAmount } = computeItemSplit(itemTotal);
+      const discountedTotal = Math.max(
+        0,
+        Math.round(itemTotal * discountMultiplier),
+      );
+      const { commission, brandAmount } = computeItemSplit(discountedTotal);
       orderLines.push({
         productId,
         brandProfileId: product.brandProfileId,
         quantity,
-        price: itemTotal,
+        price: discountedTotal,
         commission,
         brandAmount,
       });
-      totalAmount += itemTotal;
+      totalAmount += discountedTotal;
       platformFee += commission;
     }
 
@@ -151,6 +198,7 @@ export async function POST(req: NextRequest) {
           shippingAddressId,
           billingAddressId: finalBillingAddressId,
           receipt: idempotencyKey ?? undefined, // keep for idempotency lookup; else set to order.id below
+          couponId: coupon?.id,
         },
       });
       for (const line of orderLines) {

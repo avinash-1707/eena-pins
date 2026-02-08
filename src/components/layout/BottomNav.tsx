@@ -10,7 +10,7 @@ const BottomNav = () => {
   const pathname = usePathname();
   const { data: session } = useSession();
 
-  const role = session?.user?.role; // "ADMIN" | "BRAND" | undefined
+  const role = session?.user?.role; // "ADMIN" | "BRAND" | "CREATOR" | undefined
 
   const isActive = (tab: string) => {
     if (pathname === "/" && tab === "home") return true;
@@ -18,6 +18,8 @@ const BottomNav = () => {
     if (pathname.startsWith("/profile") && tab === "profile") return true;
     if (pathname === "/dashboard" && tab === "dashboard") return true;
     if (pathname === "/brand-dashboard" && tab === "brand-dashboard")
+      return true;
+    if (pathname === "/settings/creator-dashboard" && tab === "creator-dashboard")
       return true;
     return false;
   };
@@ -97,31 +99,51 @@ const BottomNav = () => {
             </span>
           </button>
 
-          {/* Dashboard (ADMIN / BRAND only) */}
-          {role && (role === "ADMIN" || role === "BRAND") && (
+          {/* Dashboard (ADMIN / BRAND / CREATOR only) */}
+          {role && (role === "ADMIN" || role === "BRAND" || role === "CREATOR") && (
             <button
               onClick={() =>
                 handleNavigation(
-                  role === "ADMIN" ? "/dashboard" : "/brand-dashboard",
+                  role === "ADMIN"
+                    ? "/dashboard"
+                    : role === "BRAND"
+                      ? "/brand-dashboard"
+                      : "/settings/creator-dashboard",
                 )
               }
               className="flex flex-col items-center justify-center flex-1 py-1 transition-all active:scale-95"
             >
               <LayoutDashboard
                 className={`w-6 h-6 mb-1 ${
-                  isActive(role === "ADMIN" ? "dashboard" : "brand-dashboard")
+                  isActive(
+                    role === "ADMIN"
+                      ? "dashboard"
+                      : role === "BRAND"
+                        ? "brand-dashboard"
+                        : "creator-dashboard",
+                  )
                     ? "text-gray-900"
                     : "text-gray-600"
                 }`}
               />
               <span
                 className={`text-xs ${
-                  isActive(role === "ADMIN" ? "dashboard" : "brand-dashboard")
+                  isActive(
+                    role === "ADMIN"
+                      ? "dashboard"
+                      : role === "BRAND"
+                        ? "brand-dashboard"
+                        : "creator-dashboard",
+                  )
                     ? "text-gray-900 font-bold"
                     : "text-gray-600 font-medium"
                 }`}
               >
-                {role === "ADMIN" ? "Admin" : "Brand"}
+                {role === "ADMIN"
+                  ? "Admin"
+                  : role === "BRAND"
+                    ? "Brand"
+                    : "Creator"}
               </span>
             </button>
           )}

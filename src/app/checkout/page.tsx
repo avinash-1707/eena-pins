@@ -60,6 +60,7 @@ export default function CheckoutPage() {
     pincode: "",
     label: "",
   });
+  const [couponCode, setCouponCode] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -237,6 +238,7 @@ export default function CheckoutPage() {
             ? undefined
             : selectedBillingId,
           useShippingAsBilling,
+          couponCode: couponCode.trim() || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -495,6 +497,21 @@ export default function CheckoutPage() {
           {cartItems.length} item(s) · Total
         </p>
         <p className="text-xl font-bold text-gray-900 mb-4">₹{totalRupees}</p>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Coupon code
+          </label>
+          <input
+            type="text"
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value)}
+            placeholder="Enter creator coupon"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+          <p className="mt-2 text-xs text-gray-500">
+            Discounts will be applied during payment if the code is valid.
+          </p>
+        </div>
         {error && (
           <p className="text-sm text-red-600 mb-4" role="alert">
             {error}

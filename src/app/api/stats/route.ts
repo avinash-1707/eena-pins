@@ -3,14 +3,16 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
     try {
-        const [userCount, brandCount] = await Promise.all([
+        const [userCount, brandCount, creatorCount] = await Promise.all([
             prisma.user.count(),
             prisma.user.count({ where: { role: "BRAND" } }),
+            prisma.user.count({ where: { role: "CREATOR" } }),
         ]);
 
         return NextResponse.json({
             users: userCount,
             brands: brandCount,
+            creators: creatorCount,
         });
     } catch (error) {
         console.error("GET /api/stats error:", error);

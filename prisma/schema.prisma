@@ -10,6 +10,7 @@ datasource db {
 enum Role {
   USER
   BRAND
+  CREATOR
   ADMIN
 }
 
@@ -17,6 +18,25 @@ enum BrandRequestStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum CreatorRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CreatorPostStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum CouponStatus {
+  ACTIVE
+  USED
+  EXPIRED
+  REVOKED
 }
 
 model Account {
@@ -62,6 +82,12 @@ model User {
   // Brand access
   brandProfile   BrandProfile?
   brandRequest   BrandRequest?
+
+  // Creator access
+  creatorProfile CreatorProfile?
+  creatorRequest CreatorRequest?
+  creatorPosts   CreatorPost[]
+  coupons        Coupon[]
 
   // Social
   ratings     UserRating[]
@@ -114,6 +140,72 @@ model BrandRequest {
   reviewedById String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CreatorRequest {
+  id              String               @id @default(uuid())
+  userId          String               @unique
+  status          CreatorRequestStatus @default(PENDING)
+  fullName        String
+  username        String
+  instagramHandle String
+  followers       Int
+  createdAt       DateTime             @default(now())
+  reviewedAt      DateTime?
+  reviewedById    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CreatorProfile {
+  id              String  @id @default(uuid())
+  userId          String  @unique
+  fullName        String?
+  username        String?
+  instagramHandle String?
+  followers       Int?
+  bio             String?
+
+  isApproved Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CreatorPost {
+  id           String             @id @default(uuid())
+  userId       String
+  link         String
+  status       CreatorPostStatus  @default(PENDING_REVIEW)
+  createdAt    DateTime           @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon Coupon?
+
+  @@index([userId])
+}
+
+model Coupon {
+  id              String       @id @default(uuid())
+  userId          String
+  code            String       @unique
+  discountPercent Int
+  status          CouponStatus @default(ACTIVE)
+  expiresAt       DateTime?
+  usedAt          DateTime?
+  createdAt       DateTime     @default(now())
+
+  creatorPostId String? @unique
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creatorPost CreatorPost? @relation(fields: [creatorPostId], references: [id], onDelete: SetNull)
+  orders      Order[]
+
+  @@index([userId])
 }
 
 model Address {
@@ -260,6 +352,8 @@ model Order {
   platformFee Int // commission amount
   currency    String @default("INR")
 
+  couponId String? @unique
+
   razorpayOrderId String? @unique
   receipt         String? // your internal receipt/order no
 
@@ -274,6 +368,7 @@ model Order {
   updatedAt DateTime @updatedAt
 
   user              User            @relation(fields: [userId], references: [id])
+  coupon            Coupon?         @relation(fields: [couponId], references: [id], onDelete: SetNull)
   shippingAddress   Address?        @relation("ShippingAddress", fields: [shippingAddressId], references: [id], onDelete: SetNull)
   billingAddress    Address?        @relation("BillingAddress", fields: [billingAddressId], references: [id], onDelete: SetNull)
   items             OrderItem[]
@@ -283,6 +378,7 @@ model Order {
   @@index([userId])
   @@index([shippingAddressId])
   @@index([billingAddressId])
+  @@index([couponId])
 }
 
 model OrderItem {

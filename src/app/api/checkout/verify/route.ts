@@ -91,6 +91,12 @@ export async function POST(req: NextRequest) {
           where: { id: order.id },
           data: { status: "PAID" },
         });
+        if (order.couponId) {
+          await tx.coupon.update({
+            where: { id: order.couponId },
+            data: { status: "USED", usedAt: new Date() },
+          });
+        }
       });
     } catch (err) {
       const existing = await prisma.payment.findUnique({

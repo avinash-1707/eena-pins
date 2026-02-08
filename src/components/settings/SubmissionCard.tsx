@@ -8,9 +8,19 @@ type Props = {
   link?: string;
 };
 
-export default function SubmissionCard({ status, product, submitted, discount, link }: Props) {
+export default function SubmissionCard({
+  status,
+  product,
+  submitted,
+  discount,
+  link,
+}: Props) {
   const statusColor =
-    status === "Approved" ? "text-green-600" : status === "Pending Review" ? "text-yellow-600" : "text-gray-600";
+    status.toLowerCase().includes("approved")
+      ? "text-green-600"
+      : status.toLowerCase().includes("pending")
+        ? "text-yellow-600"
+        : "text-gray-600";
 
   return (
     <div className="border rounded-lg p-4 flex justify-between items-center">
@@ -21,7 +31,14 @@ export default function SubmissionCard({ status, product, submitted, discount, l
         {discount && <p className="text-xs text-gray-500">Discount: {discount}</p>}
       </div>
       {link && (
-        <button className="text-blue-600 hover:underline text-sm">View Post</button>
+        <a
+          href={link}
+          target="_blank"
+          rel="noreferrer"
+          className="text-blue-600 hover:underline text-sm"
+        >
+          View Post
+        </a>
       )}
     </div>
   );
