@@ -34,6 +34,8 @@ export async function GET(
           },
         },
         payment: { select: { status: true, amount: true, paidAt: true } },
+        shippingAddress: true,
+        billingAddress: true,
       },
     });
 

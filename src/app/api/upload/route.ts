@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Invalid form data" }, { status: 400 });
   }
 
-  // Determine upload type (profile or product)
+  // Determine upload type (profile, product, or message)
   const uploadType = formData.get("uploadType") ?? "product";
   const file = formData.get("file") ?? formData.get("image");
 
@@ -49,6 +49,8 @@ export async function POST(req: NextRequest) {
   let folder = "eena-pins/products";
   if (uploadType === "profile") {
     folder = "eena-pins/profiles";
+  } else if (uploadType === "message") {
+    folder = "eena-pins/messages";
   } else if (uploadType === "product") {
     // Only BRAND users can upload product images
     if (session.user.role !== "BRAND") {
@@ -57,6 +59,11 @@ export async function POST(req: NextRequest) {
         { status: 403 },
       );
     }
+  } else {
+    return NextResponse.json(
+      { message: "Invalid uploadType. Use profile, product, or message." },
+      { status: 400 },
+    );
   }
 
   try {
@@ -66,7 +73,11 @@ export async function POST(req: NextRequest) {
       mimeType: file.type,
     });
 
-    return NextResponse.json({ url: result.secure_url });
+    return NextResponse.json({
+      url: result.secure_url,
+      secure_url: result.secure_url,
+      public_id: result.public_id,
+    });
   } catch (error) {
     console.error("Upload error:", error);
     const message = error instanceof Error ? error.message : "Upload failed";

@@ -84,21 +84,24 @@ export default function BrandMessageThreadPage() {
         setUploading(true);
         const formData = new FormData();
         formData.append("file", file);
+        formData.append("uploadType", "message");
 
         const res = await fetch("/api/upload", {
           method: "POST",
           body: formData,
         });
 
-        if (!res.ok) throw new Error("Upload failed");
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message ?? "Upload failed");
+        const uploadedUrl = data.url ?? data.secure_url;
+        if (!uploadedUrl) throw new Error("Upload response missing URL");
 
         setAttachedImages((prev) => [
           ...prev,
           {
-            url: data.secure_url,
+            url: uploadedUrl,
             type: "image",
-            publicId: data.public_id,
+            publicId: data.public_id ?? "",
           },
         ]);
       } catch (err) {
