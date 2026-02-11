@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export type MessageAttachment = {
   url: string;
@@ -42,6 +43,53 @@ export async function createConversation({
 }
 
 /**
+ * Ensure conversations exist for all brands in an order and seed one welcome
+ * message per conversation when empty. Safe to call multiple times.
+ */
+export async function ensureOrderConversations(params: {
+  orderId: string;
+  userId: string;
+}) {
+  const { orderId, userId } = params;
+  const orderItems = await prisma.orderItem.findMany({
+    where: { orderId },
+    select: { brandProfileId: true },
+  });
+
+  const uniqueBrandProfileIds = [...new Set(orderItems.map((i) => i.brandProfileId))];
+
+  for (const brandProfileId of uniqueBrandProfileIds) {
+    const brandProfile = await prisma.brandProfile.findUnique({
+      where: { id: brandProfileId },
+      select: { userId: true },
+    });
+    if (!brandProfile) continue;
+
+    const conversation = await createConversation({
+      userId,
+      brandProfileId,
+      orderId,
+    });
+
+    const hasMessages = await prisma.message.findFirst({
+      where: { conversationId: conversation.id },
+      select: { id: true },
+    });
+    if (hasMessages) continue;
+
+    const welcomeMessage =
+      "Thank you for your order! We're excited to prepare your items and will keep you updated on the status. Feel free to reach out if you have any questions.";
+
+    await createMessage({
+      conversationId: conversation.id,
+      senderId: brandProfile.userId,
+      content: welcomeMessage,
+      attachments: [],
+    });
+  }
+}
+
+/**
  * Send a message in a conversation.
  */
 export async function createMessage({
@@ -61,7 +109,9 @@ export async function createMessage({
         conversationId,
         senderId,
         content: content ?? undefined,
-        attachments: attachments ? (attachments as any) : undefined,
+        attachments: attachments
+          ? (attachments as Prisma.InputJsonValue)
+          : undefined,
       },
       include: {
         sender: {

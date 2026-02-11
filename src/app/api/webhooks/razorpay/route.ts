@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { verifyWebhookSignature } from "@/lib/razorpay";
-import { createConversation, createMessage } from "@/lib/messages";
+import { ensureOrderConversations } from "@/lib/messages";
 import { NextRequest, NextResponse } from "next/server";
 
 const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -69,78 +69,40 @@ export async function POST(req: NextRequest) {
   if (!order) {
     return NextResponse.json({ received: true });
   }
-  if (order.status === "PAID" && order.payment) {
+  const alreadyPaid = order.status === "PAID" && !!order.payment;
+  if (!alreadyPaid && order.status !== "CREATED") {
     return NextResponse.json({ received: true });
   }
-  if (order.status !== "CREATED") {
-    return NextResponse.json({ received: true });
-  }
-  if (amount !== order.totalAmount) {
+  if (!alreadyPaid && amount !== order.totalAmount) {
     return NextResponse.json({ received: true });
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
-      const existing = await tx.payment.findUnique({
-        where: { orderId: order.id },
-      });
-      if (existing) return;
-
-      await tx.payment.create({
-        data: {
-          orderId: order.id,
-          status: "CAPTURED",
-          razorpayPaymentId,
-          amount: order.totalAmount,
-          currency: order.currency ?? "INR",
-          paidAt: new Date(),
-        },
-      });
-      await tx.order.update({
-        where: { id: order.id },
-        data: { status: "PAID" },
-      });
-    });
-
-    // Create conversations for each brand in the order
-    // For each OrderItem, create a conversation between the buyer and the brand
-    const orderItems = await prisma.orderItem.findMany({
-      where: { orderId: order.id },
-      include: { brandProfile: true },
-    });
-
-    for (const item of orderItems) {
-      try {
-        // Create or get conversation between buyer and brand
-        const conversation = await createConversation({
-          userId: order.userId,
-          brandProfileId: item.brandProfileId,
-          orderId: order.id,
+    if (!alreadyPaid) {
+      await prisma.$transaction(async (tx) => {
+        const existing = await tx.payment.findUnique({
+          where: { orderId: order.id },
         });
+        if (existing) return;
 
-        // Send initial message from brand to buyer
-        const brandProfile = await prisma.brandProfile.findUnique({
-          where: { id: item.brandProfileId },
+        await tx.payment.create({
+          data: {
+            orderId: order.id,
+            status: "CAPTURED",
+            razorpayPaymentId,
+            amount: order.totalAmount,
+            currency: order.currency ?? "INR",
+            paidAt: new Date(),
+          },
         });
-
-        if (brandProfile) {
-          const welcomeMessage = `Thank you for your order! We're excited to prepare your items and will keep you updated on the status. Feel free to reach out if you have any questions.`;
-
-          await createMessage({
-            conversationId: conversation.id,
-            senderId: brandProfile.userId, // brand owner's user ID
-            content: welcomeMessage,
-            attachments: [],
-          });
-        }
-      } catch (err) {
-        console.error(
-          `Failed to create conversation for order ${order.id}, brand ${item.brandProfileId}:`,
-          err,
-        );
-        // Don't fail the payment if conversation creation fails
-      }
+        await tx.order.update({
+          where: { id: order.id },
+          data: { status: "PAID" },
+        });
+      });
     }
+
+    await ensureOrderConversations({ orderId: order.id, userId: order.userId });
   } catch (err) {
     console.error("Razorpay webhook payment.captured error:", err);
     return NextResponse.json({ message: "Processing failed" }, { status: 500 });

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ensureOrderConversations } from "@/lib/messages";
 import { verifyPaymentSignature } from "@/lib/razorpay";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (order.status === "PAID" && order.payment) {
+      await ensureOrderConversations({ orderId: order.id, userId: order.userId });
       return NextResponse.json({
         success: true,
         orderId: order.id,
@@ -68,6 +70,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let paymentAlreadyVerified = false;
     try {
       await prisma.$transaction(async (tx) => {
         const existingPayment = await tx.payment.findUnique({
@@ -103,18 +106,18 @@ export async function POST(req: NextRequest) {
         where: { orderId: order.id },
       });
       if (existing) {
-        return NextResponse.json({
-          success: true,
-          orderId: order.id,
-          message: "Payment already verified",
-        });
+        paymentAlreadyVerified = true;
+      } else {
+        throw err;
       }
-      throw err;
     }
+
+    await ensureOrderConversations({ orderId: order.id, userId: order.userId });
 
     return NextResponse.json({
       success: true,
       orderId: order.id,
+      ...(paymentAlreadyVerified ? { message: "Payment already verified" } : {}),
     });
   } catch (error) {
     console.error("POST /api/checkout/verify error:", error);
