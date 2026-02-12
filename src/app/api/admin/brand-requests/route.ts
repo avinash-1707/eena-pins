@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { decodeBrandRequestMessage } from "@/lib/brand-request-application";
 
 export async function GET(req: NextRequest) {
     const token = await getToken({
@@ -34,7 +35,16 @@ export async function GET(req: NextRequest) {
             },
         });
 
-        return NextResponse.json(requests);
+        const normalized = requests.map((request) => {
+            const parsed = decodeBrandRequestMessage(request.message);
+            return {
+                ...request,
+                message: parsed.plainMessage,
+                application: parsed.application,
+            };
+        });
+
+        return NextResponse.json(normalized);
     } catch (error) {
         console.error("GET /api/admin/brand-requests error:", error);
         return NextResponse.json(

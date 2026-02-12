@@ -11,7 +11,6 @@ import {
   Phone,
   Loader2,
   LogOut,
-  Building2,
   Send,
   Camera,
   Check,
@@ -365,10 +364,6 @@ export default function PersonalProfile() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showBecomeBrandForm, setShowBecomeBrandForm] = useState(false);
-  const [becomeBrandMessage, setBecomeBrandMessage] = useState("");
-  const [becomeBrandSubmitting, setBecomeBrandSubmitting] = useState(false);
-  const [becomeBrandError, setBecomeBrandError] = useState<string | null>(null);
 
   // Editing states
   const [editingState, setEditingState] = useState<EditingState>({
@@ -718,33 +713,6 @@ export default function PersonalProfile() {
     }
   }
 
-  async function submitBecomeBrandRequest() {
-    if (!profile) return;
-    setBecomeBrandSubmitting(true);
-    setBecomeBrandError(null);
-    try {
-      const res = await fetch("/api/brand-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: becomeBrandMessage.trim() || undefined,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setBecomeBrandError(data.message ?? "Failed to submit request");
-        return;
-      }
-      setShowBecomeBrandForm(false);
-      setBecomeBrandMessage("");
-      await fetchProfile();
-    } catch {
-      setBecomeBrandError("Something went wrong");
-    } finally {
-      setBecomeBrandSubmitting(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
@@ -950,75 +918,6 @@ export default function PersonalProfile() {
             </div>
           </div>
         </section>
-
-        {/* Become a brand (USER only) */}
-        {profile.role === "USER" && (
-          <section className="mt-6 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
-            {profile.brandRequestStatus === "PENDING" ? (
-              <div className="flex items-center gap-3 text-sm text-gray-600">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50">
-                  <Building2 className="h-5 w-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Request pending</p>
-                  <p className="text-xs text-gray-500">
-                    Admins will review your request to become a brand.
-                  </p>
-                </div>
-              </div>
-            ) : showBecomeBrandForm ? (
-              <div className="space-y-3">
-                <p className="text-sm font-medium text-gray-900">
-                  Request to become a brand
-                </p>
-                <textarea
-                  placeholder="Optional message for admins…"
-                  value={becomeBrandMessage}
-                  onChange={(e) => setBecomeBrandMessage(e.target.value)}
-                  rows={3}
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                />
-                {becomeBrandError && (
-                  <p className="text-sm text-red-600">{becomeBrandError}</p>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowBecomeBrandForm(false);
-                      setBecomeBrandError(null);
-                    }}
-                    className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={submitBecomeBrandRequest}
-                    disabled={becomeBrandSubmitting}
-                    className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
-                  >
-                    {becomeBrandSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                    Submit request
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowBecomeBrandForm(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-purple-200 bg-purple-50 py-3 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100 active:scale-[0.99]"
-              >
-                <Building2 className="h-5 w-5" />
-                Become a brand
-              </button>
-            )}
-          </section>
-        )}
 
         <BottomNav />
 

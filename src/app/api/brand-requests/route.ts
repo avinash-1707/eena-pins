@@ -2,6 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/option";
+import {
+    encodeBrandRequestMessage,
+    sanitizeBrandApplicationPayload,
+} from "@/lib/brand-request-application";
 
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -19,14 +23,25 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id;
 
-    let body: { message?: string } = {};
+    let body: { message?: string; application?: unknown } = {};
     try {
         body = await req.json();
     } catch {
         // optional body
     }
 
-    const message = typeof body.message === "string" ? body.message.trim() || null : null;
+    const application = sanitizeBrandApplicationPayload(body.application);
+    if (body.application !== undefined && !application) {
+        return NextResponse.json(
+            { message: "Invalid brand application data" },
+            { status: 400 }
+        );
+    }
+
+    const message = encodeBrandRequestMessage({
+        adminNote: typeof body.message === "string" ? body.message : null,
+        application,
+    });
 
     try {
         const existing = await prisma.brandRequest.findUnique({

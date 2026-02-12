@@ -36,6 +36,16 @@ interface BrandRequestWithUser {
   userId: string;
   status: string;
   message: string | null;
+  application?: {
+    brandName: string;
+    description: string | null;
+    categories: string[];
+    contactName: string | null;
+    email: string | null;
+    phone: string | null;
+    city: string | null;
+    state: string | null;
+  } | null;
   createdAt: string;
   user: {
     id: string;
@@ -627,6 +637,44 @@ export default function Dashboard() {
                           <p className="mt-2 text-sm text-gray-600">
                             {req.message}
                           </p>
+                        )}
+                        {req.application && (
+                          <div className="mt-2 rounded-lg bg-gray-50 p-2 text-xs text-gray-600">
+                            <p className="font-medium text-gray-800">
+                              {req.application.brandName}
+                            </p>
+                            {req.application.description && (
+                              <p className="mt-1">{req.application.description}</p>
+                            )}
+                            {req.application.categories.length > 0 && (
+                              <p className="mt-1">
+                                Categories:{" "}
+                                {req.application.categories.join(", ")}
+                              </p>
+                            )}
+                            {(req.application.contactName ||
+                              req.application.email ||
+                              req.application.phone) && (
+                              <p className="mt-1">
+                                Contact:{" "}
+                                {[
+                                  req.application.contactName,
+                                  req.application.email,
+                                  req.application.phone,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                            )}
+                            {(req.application.city || req.application.state) && (
+                              <p className="mt-1">
+                                Location:{" "}
+                                {[req.application.city, req.application.state]
+                                  .filter(Boolean)
+                                  .join(", ")}
+                              </p>
+                            )}
+                          </div>
                         )}
                         <p className="mt-1 text-xs text-gray-400">
                           {new Date(req.createdAt).toLocaleString()}

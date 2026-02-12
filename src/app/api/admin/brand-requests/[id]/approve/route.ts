@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { decodeBrandRequestMessage } from "@/lib/brand-request-application";
 
 export async function POST(
     req: NextRequest,
@@ -42,6 +43,14 @@ export async function POST(
         }
 
         const adminId = token.sub ?? token.id;
+        const parsed = decodeBrandRequestMessage(brandRequest.message);
+        const application = parsed.application;
+        const fallbackBrandName =
+            brandRequest.user.name?.trim() || brandRequest.user.username;
+        const businessType =
+            application?.categories && application.categories.length > 0
+                ? application.categories.join(", ")
+                : null;
 
         await prisma.$transaction([
             // Promote user to BRAND
@@ -54,14 +63,22 @@ export async function POST(
             prisma.brandProfile.upsert({
                 where: { userId: brandRequest.userId },
                 update: {
+                    ...(application
+                        ? {
+                              brandName: application.brandName,
+                              logoUrl: application.logoUrl,
+                              description: application.description,
+                              businessType,
+                          }
+                        : {}),
                     isApproved: true,
                 },
                 create: {
                     userId: brandRequest.userId,
-                    brandName:
-                        brandRequest.user.name?.trim() ||
-                        brandRequest.user.username,
-                    description: null,
+                    brandName: application?.brandName ?? fallbackBrandName,
+                    logoUrl: application?.logoUrl ?? null,
+                    description: application?.description ?? null,
+                    businessType,
                     isApproved: true,
                 },
             }),
