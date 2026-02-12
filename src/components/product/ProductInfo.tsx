@@ -1,9 +1,10 @@
 import React from "react";
 import Rating from "@/components/ui/Rating";
-import { formatInrFromPaise } from "@/lib/currency";
+import { formatInrFromPaise, getDiscountPercentage } from "@/lib/currency";
 
 interface ProductInfoProps {
   name: string;
+  fullPrice?: number;
   price: number; // stored in paise
   description: string;
   rating: number;
@@ -12,11 +13,14 @@ interface ProductInfoProps {
 
 const ProductInfo = ({
   name,
+  fullPrice,
   price,
   description,
   rating,
   totalReviews,
 }: ProductInfoProps) => {
+  const discountPercent = getDiscountPercentage(fullPrice ?? 0, price);
+
   return (
     <div className="px-4 pb-6">
       {/* Rating */}
@@ -33,9 +37,21 @@ const ProductInfo = ({
       <h1 className="text-2xl font-bold text-gray-900 mb-2">{name}</h1>
 
       {/* Price */}
-      <p className="text-2xl font-bold text-gray-900 mb-4">
-        {formatInrFromPaise(price)}
-      </p>
+      <div className="mb-4">
+        <p className="text-2xl font-bold text-gray-900">
+          {formatInrFromPaise(price)}
+        </p>
+        {fullPrice && fullPrice > price && (
+          <div className="mt-1 flex items-center gap-2">
+            <p className="text-sm text-gray-500 line-through">
+              {formatInrFromPaise(fullPrice)}
+            </p>
+            <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+              {discountPercent}% OFF
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Description */}
       <p className="text-sm text-gray-600 leading-relaxed">{description}</p>

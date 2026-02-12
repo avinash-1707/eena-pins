@@ -67,6 +67,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const productForActions: Product = {
     id: row.id,
     name: row.name,
+    fullPrice: row.fullPrice,
     price: row.price,
     category: row.category,
     description: row.description,
@@ -119,6 +120,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
         <ProductInfo
           name={row.name}
+          fullPrice={row.fullPrice}
           price={row.price}
           description={row.description}
           rating={typeof avgRating === "number" ? avgRating : 0}

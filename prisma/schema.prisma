@@ -247,6 +247,7 @@ model PhoneOTP {
 model Product {
   id              String  @id @default(uuid())
   name            String
+  fullPrice       Int     @default(0)
   price           Int     @default(0)
   imageUrl        String
   category        String

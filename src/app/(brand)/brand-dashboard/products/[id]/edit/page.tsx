@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
+import { getDiscountPercentage } from "@/lib/currency";
 
 interface ProductDetails {
   brand?: string | null;
@@ -15,6 +16,7 @@ interface ProductDetails {
 interface FetchedProduct {
   id: string;
   name: string;
+  fullPrice: number;
   price: number;
   imageUrl: string;
   category: string;
@@ -38,6 +40,7 @@ export default function EditProductPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
+  const [fullPriceRupees, setFullPriceRupees] = useState("");
   const [priceRupees, setPriceRupees] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -51,6 +54,16 @@ export default function EditProductPage() {
   const [keyFeatures, setKeyFeatures] = useState<string[]>([]);
   const [moreOptions, setMoreOptions] = useState<{ key: string; value: string }[]>([]);
   const [initialImageUrl, setInitialImageUrl] = useState("");
+
+  const parsedFullPrice = fullPriceRupees ? parseFloat(fullPriceRupees) : 0;
+  const parsedDiscountedPrice = priceRupees ? parseFloat(priceRupees) : 0;
+  const discountPercent =
+    fullPriceRupees && priceRupees && parsedFullPrice > 0
+      ? getDiscountPercentage(
+          Math.round(parsedFullPrice * 100),
+          Math.round(parsedDiscountedPrice * 100),
+        )
+      : 0;
 
   useEffect(() => {
     if (!id) {
@@ -68,6 +81,9 @@ export default function EditProductPage() {
         }
         const p = json as FetchedProduct;
         setName(p.name ?? "");
+        setFullPriceRupees(
+          p.fullPrice != null ? (p.fullPrice / 100).toFixed(2) : "",
+        );
         setPriceRupees(p.price != null ? (p.price / 100).toFixed(2) : "");
         const img = p.imageUrl ?? "";
         setImageUrl(img);
@@ -139,21 +155,29 @@ export default function EditProductPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const fullPrice = fullPriceRupees
+      ? Math.round(parseFloat(fullPriceRupees) * 100)
+      : 0;
     const price = priceRupees ? Math.round(parseFloat(priceRupees) * 100) : 0;
     if (
       !name.trim() ||
+      fullPrice <= 0 ||
       price < 0 ||
+      fullPrice < price ||
       !category.trim() ||
       !description.trim() ||
       !imageUrl.trim()
     ) {
-      setError("Please fill all required fields and ensure a product image is set.");
+      setError(
+        "Please fill all required fields and keep full price >= discounted price.",
+      );
       return;
     }
     setLoading(true);
     try {
       const payload: Record<string, unknown> = {
         name: name.trim(),
+        fullPrice,
         price,
         imageUrl: imageUrl.trim(),
         category: category.trim(),
@@ -279,8 +303,24 @@ export default function EditProductPage() {
           </div>
 
           <div>
+            <label htmlFor="fullPrice" className="block text-sm font-medium text-gray-700">
+              Full Price (₹)
+            </label>
+            <input
+              id="fullPrice"
+              type="number"
+              step="0.01"
+              min="0"
+              value={fullPriceRupees}
+              onChange={(e) => setFullPriceRupees(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-gray-900 shadow-sm focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 sm:text-sm"
+              required
+            />
+          </div>
+
+          <div>
             <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-              Price (₹)
+              Discounted Price (₹)
             </label>
             <input
               id="price"
@@ -292,6 +332,11 @@ export default function EditProductPage() {
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-gray-900 shadow-sm focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 sm:text-sm"
               required
             />
+            {fullPriceRupees && priceRupees && parsedFullPrice > 0 && (
+              <p className="mt-1 text-xs text-gray-600">
+                Discount: <span className="font-semibold">{discountPercent}%</span>
+              </p>
+            )}
           </div>
 
           <div>

@@ -4,6 +4,7 @@ import React, { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { getDiscountPercentage } from "@/lib/currency";
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function NewProductPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
+  const [fullPriceRupees, setFullPriceRupees] = useState("");
   const [priceRupees, setPriceRupees] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -27,6 +29,16 @@ export default function NewProductPage() {
   const [moreOptions, setMoreOptions] = useState<
     { key: string; value: string }[]
   >([]);
+
+  const parsedFullPrice = fullPriceRupees ? parseFloat(fullPriceRupees) : 0;
+  const parsedDiscountedPrice = priceRupees ? parseFloat(priceRupees) : 0;
+  const discountPercent =
+    fullPriceRupees && priceRupees && parsedFullPrice > 0
+      ? getDiscountPercentage(
+          Math.round(parsedFullPrice * 100),
+          Math.round(parsedDiscountedPrice * 100),
+        )
+      : 0;
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -72,21 +84,29 @@ export default function NewProductPage() {
     e.preventDefault();
     setError(null);
     // Store price in paise (DB); user enters rupees
+    const fullPrice = fullPriceRupees
+      ? Math.round(parseFloat(fullPriceRupees) * 100)
+      : 0;
     const price = priceRupees ? Math.round(parseFloat(priceRupees) * 100) : 0;
     if (
       !name.trim() ||
+      fullPrice <= 0 ||
       price < 0 ||
+      fullPrice < price ||
       !category.trim() ||
       !description.trim() ||
       !imageUrl.trim()
     ) {
-      setError("Please fill all fields and upload a product image.");
+      setError(
+        "Please fill all fields, keep full price >= discounted price, and upload a product image.",
+      );
       return;
     }
     setLoading(true);
     try {
       const payload: Record<string, unknown> = {
         name: name.trim(),
+        fullPrice,
         price,
         imageUrl: imageUrl.trim(),
         category: category.trim(),
@@ -182,11 +202,24 @@ export default function NewProductPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="price"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Price (₹)
+            <label htmlFor="fullPrice" className="block text-sm font-medium text-gray-700">
+              Full Price (₹)
+            </label>
+            <input
+              id="fullPrice"
+              type="number"
+              step="0.01"
+              min="0"
+              value={fullPriceRupees}
+              onChange={(e) => setFullPriceRupees(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-gray-900 shadow-sm focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 sm:text-sm"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="price" className="block text-sm font-medium text-gray-700">
+              Discounted Price (₹)
             </label>
             <input
               id="price"
@@ -198,6 +231,11 @@ export default function NewProductPage() {
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-gray-900 shadow-sm focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 sm:text-sm"
               required
             />
+            {fullPriceRupees && priceRupees && parsedFullPrice > 0 && (
+              <p className="mt-1 text-xs text-gray-600">
+                Discount: <span className="font-semibold">{discountPercent}%</span>
+              </p>
+            )}
           </div>
 
           <div>

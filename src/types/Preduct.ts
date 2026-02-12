@@ -6,6 +6,7 @@ import { UserRating } from "./UserRating";
 export interface Product {
     id: string;
     name: string;
+    fullPrice?: number;
     price: number;
     category: string;
     description: string;
