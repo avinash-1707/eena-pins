@@ -1,9 +1,10 @@
 import React from "react";
 import Rating from "@/components/ui/Rating";
+import { formatInrFromPaise } from "@/lib/currency";
 
 interface ProductInfoProps {
   name: string;
-  price: number;
+  price: number; // stored in paise
   description: string;
   rating: number;
   totalReviews: number;
@@ -33,7 +34,7 @@ const ProductInfo = ({
 
       {/* Price */}
       <p className="text-2xl font-bold text-gray-900 mb-4">
-        ₹{price.toFixed(2)}
+        {formatInrFromPaise(price)}
       </p>
 
       {/* Description */}

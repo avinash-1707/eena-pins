@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Trash2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { CartItem } from '@/context/CartContext';
+import { formatInrFromPaise } from '@/lib/currency';
 
 interface CartItemCardProps {
   item: CartItem;
@@ -60,7 +61,7 @@ const CartItemCard = ({ item }: CartItemCardProps) => {
             {item.product.name}
           </h3>
           <p className="text-lg font-bold text-gray-900">
-            ${item.product.price.toFixed(2)}
+            {formatInrFromPaise(item.product.price)}
           </p>
         </div>
 
