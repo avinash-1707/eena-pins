@@ -1,20 +1,40 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { Pin } from "lucide-react";
 
 interface ProductCardProps {
   id: string;
   name: string;
   category: string;
   imageUrl: string;
+  isPinned?: boolean;
+  onPinRequest?: (productId: string) => void;
 }
 
-const ProductCard = ({ id, name, imageUrl }: ProductCardProps) => {
+const CLICK_DELAY_MS = 220;
+
+const ProductCard = ({
+  id,
+  name,
+  imageUrl,
+  isPinned = false,
+  onPinRequest,
+}: ProductCardProps) => {
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
   const [aspect, setAspect] = useState<"short" | "medium" | "tall">("medium");
+  const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Variable heights for masonry effect (derived from image dimensions on load)
   const heightClasses = {
@@ -32,7 +52,22 @@ const ProductCard = ({ id, name, imageUrl }: ProductCardProps) => {
   };
 
   const handleImageClick = () => {
-    router.push(`/product/${id}`);
+    if (!onPinRequest) {
+      router.push(`/product/${id}`);
+      return;
+    }
+
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+      onPinRequest(id);
+      return;
+    }
+
+    clickTimeoutRef.current = setTimeout(() => {
+      router.push(`/product/${id}`);
+      clickTimeoutRef.current = null;
+    }, CLICK_DELAY_MS);
   };
 
   return (
@@ -43,6 +78,12 @@ const ProductCard = ({ id, name, imageUrl }: ProductCardProps) => {
           onClick={handleImageClick}
           className={`relative ${heightClasses[aspect]} bg-gray-100 `}
         >
+          {isPinned && (
+            <div className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-red-500 px-2 py-1 text-xs font-medium text-white shadow">
+              <Pin className="h-3 w-3 fill-current" />
+              Saved
+            </div>
+          )}
           {!imageError ? (
             <Image
               src={imageUrl}

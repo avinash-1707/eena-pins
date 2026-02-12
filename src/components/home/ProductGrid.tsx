@@ -8,13 +8,15 @@ interface Product {
   name: string;
   category: string;
   imageUrl: string;
+  isPinned?: boolean;
 }
 
 interface ProductGridProps {
   products: Product[];
+  onPinRequest?: (productId: string) => void;
 }
 
-const ProductGrid = ({ products }: ProductGridProps) => {
+const ProductGrid = ({ products, onPinRequest }: ProductGridProps) => {
   return (
     <div className="px-4 py-6">
       {/* Masonry Grid */}
@@ -26,6 +28,8 @@ const ProductGrid = ({ products }: ProductGridProps) => {
               name={product.name}
               category={product.category}
               imageUrl={product.imageUrl}
+              isPinned={product.isPinned}
+              onPinRequest={onPinRequest}
             />
           </div>
         ))}

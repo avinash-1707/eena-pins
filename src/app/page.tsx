@@ -5,12 +5,14 @@ import HomeHeader from "@/components/layout/HomeHeader";
 import CategoryTabs from "@/components/layout/CategoryTabs";
 import BottomNav from "@/components/layout/BottomNav";
 import ProductGrid from "@/components/home/ProductGrid";
+import CollectionPickerModal from "@/components/collections/CollectionPickerModal";
 
 interface ApiProduct {
   id: string;
   name: string;
   category: string;
   imageUrl: string;
+  isPinned?: boolean;
 }
 
 const PAGE_SIZE = 12;
@@ -24,6 +26,8 @@ function Home() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const loadPage = useCallback(
@@ -89,7 +93,27 @@ function Home() {
     name: p.name,
     category: p.category,
     imageUrl: p.imageUrl,
+    isPinned: p.isPinned ?? false,
   }));
+
+  const handlePinRequest = (productId: string) => {
+    setSelectedProductId(productId);
+    setShowCollectionModal(true);
+  };
+
+  const handlePinned = () => {
+    if (!selectedProductId) return;
+    setProducts((prev) =>
+      prev.map((product) =>
+        product.id === selectedProductId
+          ? {
+              ...product,
+              isPinned: true,
+            }
+          : product
+      )
+    );
+  };
 
   return (
     <div className="min-h-screen dotted-background">
@@ -112,7 +136,7 @@ function Home() {
           </div>
         ) : (
           <>
-            <ProductGrid products={displayProducts} />
+            <ProductGrid products={displayProducts} onPinRequest={handlePinRequest} />
             <div ref={sentinelRef} className="h-4" aria-hidden />
             {loadingMore && (
               <div className="px-4 py-6 text-center text-sm text-gray-500">
@@ -122,6 +146,16 @@ function Home() {
           </>
         )}
       </main>
+
+      <CollectionPickerModal
+        open={showCollectionModal}
+        productId={selectedProductId}
+        onClose={() => {
+          setShowCollectionModal(false);
+          setSelectedProductId(null);
+        }}
+        onPinned={handlePinned}
+      />
 
       <BottomNav />
     </div>

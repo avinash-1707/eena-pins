@@ -20,6 +20,7 @@ import {
 import { signOut } from "next-auth/react";
 // note: avoid using `useSearchParams` here to prevent CSR bailout during prerender
 import BottomNav from "@/components/layout/BottomNav";
+import ProfileCollections from "@/components/collections/ProfileCollections";
 
 interface ProfileData {
   id: string;
@@ -841,6 +842,12 @@ export default function PersonalProfile() {
             </div>
           </div>
         </section>
+
+        <ProfileCollections
+          userId={profile.id}
+          title="Your collections"
+          emptyMessage="You have not saved any products yet."
+        />
 
         {/* Contact Info - Editable */}
         <section className="mt-6 space-y-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">

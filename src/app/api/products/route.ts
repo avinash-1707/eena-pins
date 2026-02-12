@@ -6,6 +6,8 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/option";
 
 export async function GET(req: NextRequest) {
     try {
+        const session = await getServerSession(authOptions);
+        const userId = session?.user?.id;
         const { searchParams } = new URL(req.url);
 
         const cursor = searchParams.get("cursor") ?? undefined;
@@ -29,6 +31,13 @@ export async function GET(req: NextRequest) {
             ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
             orderBy,
             include: {
+                collections: userId
+                    ? {
+                        where: { collection: { userId } },
+                        select: { id: true },
+                        take: 1,
+                    }
+                    : false,
                 details: true,
                 ratings: {
                     select: { rating: true },
@@ -60,12 +69,15 @@ export async function GET(req: NextRequest) {
                 ratingCount > 0
                     ? p.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingCount
                     : null;
+            const pinnedEntries = (p as { collections?: { id: string }[] }).collections;
 
             return {
                 ...p,
                 avgRating,
                 ratingCount,
                 ratings: undefined,
+                collections: undefined,
+                isPinned: userId ? Array.isArray(pinnedEntries) && pinnedEntries.length > 0 : false,
             };
         });
 

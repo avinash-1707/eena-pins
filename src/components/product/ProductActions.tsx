@@ -5,17 +5,20 @@ import { ShoppingCart, Pin, Check } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Product } from '@/types/Preduct';
 import { useCart } from '@/context/CartContext';
+import CollectionPickerModal from '@/components/collections/CollectionPickerModal';
 
 interface ProductActionsProps {
   product: Product;
+  initiallyPinned?: boolean;
   // price: number;
 }
 
-const ProductActions = ({ product }: ProductActionsProps) => {
+const ProductActions = ({ product, initiallyPinned = false }: ProductActionsProps) => {
   const { addToCart } = useCart();
 
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [isPinned, setIsPinned] = useState(initiallyPinned);
   const [isAdded, setIsAdded] = useState(false);
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
 
   const handleAddToCart = () => {
     
@@ -29,9 +32,8 @@ const ProductActions = ({ product }: ProductActionsProps) => {
     }, 2000);
   };
 
-  const handleToggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    // console.log('Toggle favorite:', productId);
+  const handleOpenPinModal = () => {
+    setShowCollectionModal(true);
   };
 
   return (
@@ -47,17 +49,24 @@ const ProductActions = ({ product }: ProductActionsProps) => {
         </Button>
 
         <button
-          onClick={handleToggleFavorite}
+          onClick={handleOpenPinModal}
           className="p-3 rounded-full border-2 border-gray-300 hover:bg-gray-50 active:scale-95 transition-all"
-          aria-label="Add to favorites"
+          aria-label="Save to collection"
         >
           <Pin
             className={`w-6 h-6 transition-colors ${
-              isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'
+              isPinned ? 'fill-red-500 text-red-500' : 'text-gray-600'
             }`}
           />
         </button>
       </div>
+
+      <CollectionPickerModal
+        open={showCollectionModal}
+        productId={product.id}
+        onClose={() => setShowCollectionModal(false)}
+        onPinned={() => setIsPinned(true)}
+      />
     </div>
   );
 };

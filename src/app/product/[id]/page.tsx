@@ -1,5 +1,6 @@
 import React from "react";
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth";
 import ProductImageSection from "@/components/product/ProductImageSection";
 import ProductInfo from "@/components/product/ProductInfo";
 import ProductFeatures from "@/components/product/ProductFeatures";
@@ -11,6 +12,7 @@ import Header from "@/components/layout/HomeHeader";
 import { prisma } from "@/lib/prisma";
 import type { Product } from "@/types/Preduct";
 import { Role } from "@/types/Role";
+import { authOptions } from "@/app/api/auth/[...nextauth]/option";
 
 interface ProductPageProps {
   params: Promise<{ id: string }>;
@@ -24,10 +26,19 @@ function parseOptionArray(val: unknown): string[] {
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params;
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
 
   const row = await prisma.product.findUnique({
     where: { id },
     include: {
+      collections: userId
+        ? {
+            where: { collection: { userId } },
+            select: { id: true },
+            take: 1,
+          }
+        : false,
       details: true,
       ratings: {
         select: {
@@ -94,6 +105,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
     row.ratings.length > 0
       ? row.ratings.reduce((sum, r) => sum + r.rating, 0) / row.ratings.length
       : details?.rating ?? 0;
+  const pinnedEntries = (row as { collections?: { id: string }[] }).collections;
+  const initiallyPinned = userId
+    ? Array.isArray(pinnedEntries) && pinnedEntries.length > 0
+    : false;
 
   const reviews = row.ratings.map((r) => ({
     id: r.id,
@@ -131,7 +146,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <ProductOptions colors={colors} sizes={sizes} />
         )}
 
-        <ProductActions product={productForActions} />
+        <ProductActions
+          product={productForActions}
+          initiallyPinned={initiallyPinned}
+        />
 
         <ProductFeatures
           freeShipping={row.freeShippingOn}
